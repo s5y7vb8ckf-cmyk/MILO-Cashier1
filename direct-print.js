@@ -185,6 +185,14 @@
     }
     return 0;
   }
+  // ESC/POS cash drawer pulse. Pin 2 is standard; some printers use pin 5.
+  async function openDrawer(){
+    if(!usb&&!serial)throw Error('اتصل بالطابعة عبر USB أو Serial أولًا');
+    const pin=localStorage.getItem('milo_drawer_pin')==='5'?1:0;
+    await write(Uint8Array.from([0x1b,0x70,pin,0x32,0x32]));
+    status('تم إرسال نبضة فتح الدرج إلى الطابعة (لا يمكن التحقق من الفتح ميكانيكيًا).');
+    return true;
+  }
   async function printTask(task){
     if(!usb&&!serial)throw Error('اختر توصيل USB أو Serial من الإعدادات أولاً');
     status('جارٍ تجهيز الفاتورة...');
@@ -199,11 +207,12 @@
   }
   document.addEventListener('click',async ev=>{
     const id=ev.target?.closest?.('button')?.id;
-    if(!['miloUsbConnect','miloSerialConnect','miloDirectTest'].includes(id))return;
+    if(!['miloUsbConnect','miloSerialConnect','miloDirectTest','miloDrawerDirectTest'].includes(id))return;
     ev.preventDefault();ev.stopPropagation();
     try{
       if(id==='miloUsbConnect')await connectUsb();
       if(id==='miloSerialConnect')await connectSerial();
+      if(id==='miloDrawerDirectTest')await openDrawer();
       if(id==='miloDirectTest'){
         const paper=localStorage.getItem('milo_paper')||'80';
         const html=`<section id="receipt" class="print-receipt"><div class="receipt-inner"><div class="receipt-head"><h2>MILO CASHIER</h2><div class="receipt-sub">اختبار الطباعة المباشرة</div><div class="milo-order-number"><span>رقم الطلب</span><strong>47</strong></div></div><table class="receipt-items"><tbody><tr><td>منتج تجريبي عربي</td><td>2</td><td>15.00</td></tr></tbody></table><div class="receipt-summary"><div class="rline receipt-strong">الإجمالي 30.00 ر.س</div></div><div class="receipt-footer">شكرًا لزيارتكم</div></div></section>`;
@@ -217,5 +226,5 @@
       status(ev.target.checked?'الوضع المباشر مفعل. اتصل بالطابعة قبل البيع.':'تم الرجوع لطباعة المتصفح.');
     }
   },true);
-  window.MiloDirectPrint={connectUsb,connectSerial,printTask};
+  window.MiloDirectPrint={connectUsb,connectSerial,printTask,openDrawer};
 })();

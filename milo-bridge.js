@@ -52,5 +52,30 @@ async function payload(html,receiptType="customer"){
 }
 async function send(data){const token=localStorage.getItem('milo_bridge_token')||'';if(!token)throw Error('أدخل مفتاح الربط في إعدادات الطباعة');let res;try{res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','X-MILO-Token':token},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)})}catch(e){throw Error('تعذر الاتصال ببرنامج MILO Print Bridge: '+e.message)}if(!res.ok)throw Error('رفض برنامج الطباعة الطلب (HTTP '+res.status+'): '+(await res.text()).slice(0,160));return true;}
 async function printTask(task){const data=await payload(task.html,task.receiptType||"customer");await send(data);return true;}
-window.MiloPrintBridge={printTask};
+async function openDrawer(){
+ const token=localStorage.getItem('milo_bridge_token')||'';
+ if(!token)throw Error('مفتاح MILO Print Bridge غير مضبوط');
+ let res;
+ try{res=await fetch('http://127.0.0.1:17855/drawer',{
+  method:'POST',headers:{'Content-Type':'application/json','X-MILO-Token':token},
+  body:JSON.stringify({command:'openDrawer',pin:localStorage.getItem('milo_drawer_pin')==='5'?5:2}),
+  signal:AbortSignal.timeout(7000)
+ });}catch(e){throw Error('تعذر الاتصال ببرنامج Bridge المحلي: '+e.message)}
+ if(!res.ok)throw Error(res.status===404?'برنامج MILO Print Bridge الحالي لا يدعم /drawer ويحتاج تحديثًا':'ردّ برنامج Bridge بالخطأ HTTP '+res.status);
+ return true;
+}
+// Website heartbeat: the Windows notification icon becomes green only when authenticated.
+let lastHeartbeatError='';
+async function heartbeat(){
+ const token=localStorage.getItem('milo_bridge_token')||'';
+ if(!token||localStorage.getItem('milo_print_mode')!=='bridge')return;
+ try{
+  const res=await fetch('http://127.0.0.1:17855/heartbeat',{method:'POST',headers:{'Content-Type':'application/json','X-MILO-Token':token},body:JSON.stringify({site:location.origin,page:location.pathname}),signal:AbortSignal.timeout(4000)});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  lastHeartbeatError='';
+ }catch(e){lastHeartbeatError=String(e?.message||e)}
+}
+setInterval(heartbeat,7000);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',heartbeat,{once:true});else heartbeat();
+window.MiloPrintBridge={printTask,openDrawer,heartbeat,getLastHeartbeatError:()=>lastHeartbeatError};
 })();
