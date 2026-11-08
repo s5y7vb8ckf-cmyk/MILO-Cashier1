@@ -925,3 +925,357 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
 .milo-settings-layout .milo-danger-actions .btn{background:#a73540!important;border-color:#a73540!important;color:white!important}
 @media(max-width:1100px){.milo-settings-layout .setting-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.milo-settings-layout .setting-grid{grid-template-columns:1fr}.milo-settings-section{padding:11px}.milo-settings-section-heading{gap:5px}}
+
+/* MILO RECEIPT PRO 2026-11-08 — one consistent thermal layout, 58/80 mm. */
+#receipt.print-receipt:not(.milo-special-ticket){
+  box-sizing:border-box!important;color:#000!important;background:#fff!important;
+  width:var(--receipt-width,76mm)!important;max-width:var(--receipt-width,76mm)!important;
+  padding:1mm 1.3mm 2mm!important;margin:0!important;overflow:visible!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-inner{
+  box-sizing:border-box!important;width:100%!important;padding:0!important;margin:0!important;
+  font-family:Tahoma,Arial,sans-serif!important;font-size:11px!important;line-height:1.42!important;
+  direction:rtl!important;text-align:right!important;overflow:visible!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-head{
+  display:block!important;text-align:center!important;margin:0!important;padding:0 0 1.8mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-head h2{
+  font-size:17px!important;font-weight:800!important;line-height:1.32!important;
+  margin:1mm auto!important;overflow-wrap:anywhere!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-receipt-logo{
+  display:block!important;width:auto!important;height:auto!important;
+  max-width:28mm!important;max-height:13mm!important;
+  object-fit:contain!important;margin:0 auto 1mm!important;
+  filter:grayscale(1) contrast(1.8)!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-sub{
+  font-size:10px!important;line-height:1.32!important;margin:.5mm 0!important;text-align:center!important;
+  overflow-wrap:anywhere!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-badge{
+  font-size:10px!important;font-weight:700!important;border:0!important;
+  padding:0!important;margin:1mm auto!important;display:block!important;text-align:center!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number{
+  box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
+  justify-content:center!important;align-items:center!important;gap:0!important;
+  border:1px solid #000!important;border-radius:0!important;
+  padding:1mm!important;margin:1.5mm 0!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number span{
+  font-size:9px!important;font-weight:600!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number strong{
+  display:block!important;font-size:20px!important;line-height:1.2!important;
+  font-weight:800!important;direction:ltr!important;unicode-bidi:isolate!important;
+  max-width:100%!important;overflow-wrap:anywhere!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-box{
+  border:0!important;border-top:1px dashed #555!important;border-bottom:1px dashed #555!important;
+  border-radius:0!important;padding:1.7mm 0!important;margin:1mm 0 2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:1.3mm 2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid>div{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  gap:0!important;min-width:0!important;text-align:right!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid span{
+  font-size:9px!important;font-weight:500!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid b{
+  max-width:100%!important;font-size:10px!important;font-weight:700!important;
+  overflow-wrap:anywhere!important;line-height:1.45!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items{
+  width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;
+  direction:rtl!important;margin:0 0 1.3mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items th,
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items td{
+  box-sizing:border-box!important;border:0!important;padding:1.2mm .7mm!important;
+  vertical-align:top!important;font-size:10px!important;line-height:1.32!important;
+  overflow-wrap:anywhere!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items th{
+  font-weight:800!important;border-top:1px solid #000!important;border-bottom:1px solid #000!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items tbody tr{
+  border-bottom:1px dashed #aaa!important;break-inside:avoid!important;page-break-inside:avoid!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items th:first-child,
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items td:first-child{width:47%!important;text-align:right!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items th:nth-child(2),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items td:nth-child(2){width:10%!important;text-align:center!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items th:nth-child(3),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items td:nth-child(3){width:21%!important;text-align:center!important;direction:ltr!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items th:nth-child(4),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items td:nth-child(4){width:22%!important;text-align:left!important;direction:ltr!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items .item-main{
+  display:block!important;font-size:11px!important;line-height:1.35!important;font-weight:700!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-unit-price{display:none!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-rule{margin:1.5mm 0!important;border-top:1px dashed #555!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary{margin:0!important;break-inside:avoid!important;}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary .rline{
+  display:flex!important;align-items:baseline!important;justify-content:space-between!important;
+  gap:2mm!important;border:0!important;padding:.4mm 0!important;margin:.4mm 0!important;
+  font-size:11px!important;line-height:1.45!important;text-align:right!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary .rline span{
+  flex:1 1 auto!important;min-width:0!important;text-align:right!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary .rline b{
+  flex:0 0 auto!important;white-space:nowrap!important;direction:ltr!important;
+  unicode-bidi:isolate!important;font-size:11px!important;font-weight:700!important;text-align:left!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-tax-note{
+  font-size:9px!important;text-align:center!important;margin:1mm auto!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary .receipt-strong{
+  border-top:1.4px solid #000!important;border-bottom:1.4px solid #000!important;
+  margin:1.7mm 0!important;padding:1.4mm 0!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary .receipt-strong *{
+  font-size:14px!important;font-weight:900!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-footer{
+  border-top:1px dashed #777!important;padding:1.8mm 0 0!important;
+  margin:2mm 0 0!important;font-size:11px!important;font-weight:700!important;
+  text-align:center!important;line-height:1.5!important;white-space:pre-wrap!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-receipt-policy,
+#receipt.print-receipt:not(.milo-special-ticket) .milo-receipt-extra{
+  font-size:9px!important;font-weight:400!important;line-height:1.4!important;
+  overflow-wrap:anywhere!important;margin:1.5mm 0 0!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .qr-area{
+  display:block!important;margin:2mm auto .5mm!important;text-align:center!important;
+  break-inside:avoid!important;page-break-inside:avoid!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .qr-area svg{
+  display:block!important;width:27mm!important;height:27mm!important;max-width:100%!important;
+  margin:0 auto!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .qr-caption{
+  font-size:9px!important;text-align:center!important;margin:0!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-order-barcode,
+#receipt.print-receipt:not(.milo-special-ticket) .milo-receipt-barcode{
+  text-align:center!important;max-width:100%!important;overflow:hidden!important;
+  break-inside:avoid!important;page-break-inside:avoid!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"]{
+  width:54mm!important;max-width:54mm!important;padding:1mm 1.1mm 2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .milo-receipt-logo{
+  max-width:23mm!important;max-height:11mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items th:first-child,
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items td:first-child{width:56%!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items th:nth-child(2),
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items td:nth-child(2){width:14%!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items th:nth-child(3),
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items td:nth-child(3){display:none!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items th:nth-child(4),
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items td:nth-child(4){width:30%!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-unit-price{
+  display:block!important;font-size:9px!important;font-weight:400!important;margin-top:.3mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items th,
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items td{font-size:9px!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items .item-main{font-size:10px!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .qr-area svg{width:24mm!important;height:24mm!important;}
+@media print{
+  @page{margin:0;size:auto;}
+  body.milo-browser-print #receipt.print-receipt:not(.milo-special-ticket){
+    margin:0!important;transform:none!important;scale:1!important;zoom:1!important;
+    height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;
+    break-after:auto!important;page-break-after:auto!important;
+  }
+  body.milo-browser-print #receipt.print-receipt:not(.milo-special-ticket) .receipt-inner{
+    height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;
+  }
+  body.milo-browser-print #receipt.print-receipt:not(.milo-special-ticket) .receipt-items{
+    break-inside:auto!important;page-break-inside:auto!important;
+  }
+}
+/* Align Bridge height measurement with printed receipt to avoid blank roll feed. */
+.milo-print-measure #receipt.print-receipt:not(.milo-special-ticket){
+  height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;
+}
+
+/* Classic compact receipt style requested by user */
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-head{
+  text-align:center!important;
+  padding-bottom:1.2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-head h2{
+  font-size:17px!important;
+  margin:.4mm 0 .2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-sub{
+  font-size:10px!important;
+  line-height:1.35!important;
+  margin:.4mm 0!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-badge{
+  display:block!important;
+  border:none!important;
+  padding:0!important;
+  margin:1mm 0 .6mm!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number{
+  border:1.4px solid #000!important;
+  border-radius:0!important;
+  margin:2mm 0 1.8mm!important;
+  padding:1.8mm 1.2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number span{
+  display:block!important;
+  font-size:10px!important;
+  margin-bottom:.5mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number strong{
+  display:block!important;
+  font-size:24px!important;
+  line-height:1.15!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-box.milo-classic-meta{
+  border:none!important;
+  padding:0!important;
+  margin:0 0 1.6mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid.milo-classic-grid{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:.7mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid.milo-classic-grid>div{
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:space-between!important;
+  gap:3mm!important;
+  font-size:10.5px!important;
+  padding:0!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid.milo-classic-grid span{
+  font-weight:700!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-grid.milo-classic-grid b{
+  font-weight:700!important;
+  text-align:left!important;
+  direction:ltr!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items{
+  margin-top:1.4mm!important;
+  table-layout:fixed!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items th,
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items td{
+  border-bottom:1px solid #d0d0d0!important;
+  padding:1.3mm .6mm!important;
+  font-size:10px!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items th{
+  border-top:1px solid #000!important;
+  border-bottom:1px solid #000!important;
+  font-weight:900!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items td:first-child,
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items th:first-child{
+  text-align:right!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items td:nth-child(2),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items td:nth-child(3),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items td:nth-child(4),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items th:nth-child(2),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items th:nth-child(3),
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-items.milo-classic-items th:nth-child(4){
+  text-align:center!important;
+  direction:ltr!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary.milo-classic-summary{
+  margin-top:1mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary.milo-classic-summary .rline{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:center!important;
+  gap:4mm!important;
+  margin:.8mm 0!important;
+  font-size:10.5px!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary.milo-classic-summary .receipt-strong{
+  border-top:1px solid #000!important;
+  border-bottom:none!important;
+  margin-top:1.4mm!important;
+  padding-top:1.3mm!important;
+  font-size:14px!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary.milo-classic-summary .receipt-strong span,
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary.milo-classic-summary .receipt-strong b{
+  font-size:14px!important;
+  font-weight:900!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-tax-note{
+  text-align:center!important;
+  font-size:9px!important;
+  margin:.6mm 0 1mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-footer{
+  border-top:none!important;
+  margin-top:1.5mm!important;
+  padding-top:.8mm!important;
+  text-align:center!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .qr-area{
+  margin:2.2mm auto .8mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .qr-area svg{
+  width:28mm!important;
+  height:28mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .qr-caption{
+  text-align:center!important;
+  font-size:9px!important;
+  margin-bottom:1.2mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-barcode{
+  margin:1.6mm auto .5mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-barcode svg{
+  width:92%!important;
+  height:13mm!important;
+}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .milo-order-number strong{font-size:21px!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items.milo-classic-items th,
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .receipt-items.milo-classic-items td{font-size:9px!important;}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .milo-order-barcode svg{height:11mm!important;}
+
+/* Compact collapsible order detail section - gives basket products more vertical space. */
+.sale-cart .milo-cart-details {flex:0 0 auto;min-height:0;border:1px solid #dfe8ed;border-radius:10px;background:#fff;overflow:hidden;}
+.sale-cart .milo-cart-details-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:9px;min-height:38px;padding:7px 11px;background:#f6f9fb;border:0;color:#22374d;cursor:pointer;text-align:right;font-family:inherit;font-size:11px;}
+.sale-cart .milo-cart-details-toggle:focus-visible{outline:2px solid #167cb0;outline-offset:-2px;}
+.sale-cart .milo-cart-details-toggle-label{display:inline-flex;align-items:center;gap:8px;}
+.sale-cart .milo-cart-details-chevron{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid #cddce6;border-radius:6px;background:#fff;color:#235a78;font-size:19px;line-height:1;transition:transform .16s ease;}
+.sale-cart .milo-cart-details.is-open .milo-cart-details-chevron{transform:rotate(180deg);}
+.sale-cart .milo-cart-details-hint{font-size:10px;color:#647a8b;font-weight:500;}
+.sale-cart .milo-cart-details-body{padding:10px;display:flex;flex-direction:column;gap:9px;max-height:min(38vh,330px);overflow-y:auto;}
+.sale-cart .milo-cart-details-body[hidden]{display:none!important;}
+.sale-cart .milo-cart-details-body label{display:block;}
+.sale-cart .milo-cart-details-body label .input{display:block;width:100%;margin-top:5px;}
+.sale-cart .milo-cart-details-body .toolbar{gap:5px;}
+.sale-cart .milo-cart-details-body .toolbar .btn{padding:6px 9px;min-height:30px;font-size:10px;}
+.sale-cart .milo-cart-subtotals{padding:8px 10px!important;}
+.sale-cart .milo-cart-subtotals .total-row{margin-bottom:6px;}
+.sale-cart .milo-cart-grand{flex:0 0 auto;padding:9px 12px!important;margin:0!important;}
+.sale-cart .milo-cart-grand .grand{border-top:0!important;margin:0!important;padding:0!important;display:flex;justify-content:space-between;align-items:center;font-size:17px!important;}
+.sale-cart .cart-lines{min-height:65px!important;flex:1 1 auto!important;}
+@media(max-width:600px){.sale-cart .milo-cart-details-hint{display:none;}.sale-cart .milo-cart-details-body{max-height:45vh;}}
