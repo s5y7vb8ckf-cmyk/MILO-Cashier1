@@ -905,3 +905,23 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
 .milo-danger-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .milo-danger-actions .btn{background:#a12c38;color:#fff;border-color:#a12c38}
 .milo-danger-actions .btn:hover{background:#80202a}
+
+/* MILO CASHIER | Professional compact settings */
+.milo-settings-layout{display:grid;gap:16px;max-width:1320px;margin-inline:auto}
+.milo-settings-section{background:#f8fafc;border:1px solid #e4ebf0;border-radius:14px;padding:15px}
+.milo-settings-section-heading{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap;margin:0 0 12px;border-bottom:1px solid #e5edf2;padding-bottom:10px}
+.milo-settings-section-heading h2{font-size:14px;font-weight:850;color:#244558;margin:0}
+.milo-settings-section-heading span{font-size:11px;color:#7d8b97}
+.milo-settings-layout .setting-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.milo-settings-layout .setting-tile{padding:13px 14px!important;border-radius:10px!important;box-shadow:0 2px 7px rgba(30,64,82,.035)!important;min-width:0}
+.milo-settings-layout .setting-tile h3{font-size:12px!important;line-height:1.5;margin:0 0 4px!important;color:#213c50}
+.milo-settings-layout .setting-tile p{font-size:10.5px!important;line-height:1.65!important;min-height:0!important;margin:0 0 8px!important;color:#748392!important}
+.milo-settings-layout .setting-tile .btn{font-size:10.5px!important;padding:7px 11px!important;margin:3px 4px 3px 0!important;min-height:0}
+.milo-settings-layout .setting-tile .checkline{font-size:11px!important;line-height:1.5}
+.milo-settings-layout .setting-tile .small-note{font-size:10px!important;line-height:1.5}
+.milo-settings-layout .milo-danger-zone{background:#fff!important;border-color:#eedadb!important}
+.milo-settings-layout .milo-danger-zone h3{color:#99383f!important}
+.milo-settings-layout .milo-danger-actions{gap:5px;margin:7px 0}
+.milo-settings-layout .milo-danger-actions .btn{background:#a73540!important;border-color:#a73540!important;color:white!important}
+@media(max-width:1100px){.milo-settings-layout .setting-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.milo-settings-layout .setting-grid{grid-template-columns:1fr}.milo-settings-section{padding:11px}.milo-settings-section-heading{gap:5px}}
