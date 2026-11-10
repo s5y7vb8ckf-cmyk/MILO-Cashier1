@@ -1279,3 +1279,6 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
 .sale-cart .milo-cart-grand .grand{border-top:0!important;margin:0!important;padding:0!important;display:flex;justify-content:space-between;align-items:center;font-size:17px!important;}
 .sale-cart .cart-lines{min-height:65px!important;flex:1 1 auto!important;}
 @media(max-width:600px){.sale-cart .milo-cart-details-hint{display:none;}.sale-cart .milo-cart-details-body{max-height:45vh;}}
+
+/* Online orders dashboard */
+.milo-online-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:16px;margin-top:18px}.milo-online-card{padding:18px;display:flex;flex-direction:column;gap:12px}.milo-online-card p{margin:0}.milo-online-head,.milo-online-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.milo-online-stats{background:#fff;border:1px solid #dfebed;border-radius:14px;padding:14px}.milo-online-lines{border-top:1px solid #e7eded;border-bottom:1px solid #e7eded;padding:8px 0}.milo-online-lines>div{display:flex;justify-content:space-between;gap:8px;padding:6px 0}.milo-online-card label{font-weight:700}
