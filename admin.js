@@ -1,6 +1,6 @@
 'use strict';
 /* MILO administration uses its own server-issued admin session. Never accept cashier credentials. */
-const API='https://script.google.com/macros/s/AKfycby2xxFE1xFBdBVCH0E2tJs8BWwr7Kuxb0rrA5JaJULwrvVMwsxWIe-NuoV0wkZLyTgc/exec';
+const API='https://script.google.com/macros/s/AKfycbycbHw-QP0POkQVKWd2eGjT5ThDwVNr3yvYOrL-jbhsIcHGZmWN6FtNzadmjcVWDQlQ/exec';
 const $=s=>document.getElementById(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const dateLabel=v=>{try{return new Date(v).toLocaleString('ar-SA',{timeZone:'Asia/Riyadh'})}catch{return String(v||'')}};

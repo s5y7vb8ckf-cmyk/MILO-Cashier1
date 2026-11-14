@@ -1,0 +1,91 @@
+/* MILO CASHIER — Modern Emerald / black / off-white reference skin.
+   Appearance only. No modification to transaction, stock or receipt logic. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+:root{
+ --navy:#101211;--navy-2:#222625;--navy-3:#343a37;
+ --emerald:#11a75a;--emerald-2:#098b49;--mint:#e0f3e8;
+ --pistachio:#eef8f2;--sky:#f5faf7;--paper:#f8faf8;
+ --card:#ffffff;--line:#e8ede9;--ink:#111514;--muted:#737c77;
+ --navy2:#101211;--teal:#14ab5e;--teal-light:#e1f4e9;
+ --bg:#f8faf8;--white:#ffffff;
+ --shadow:0 12px 32px rgba(21,42,30,.055);--radius:22px;--radius-sm:15px;
+ color-scheme:light;
+}
+html{font-synthesis:none}
+body,button,input,select,textarea,option{font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif!important;letter-spacing:0!important}
+body{background:#f8faf8!important;color:#141715!important;font-weight:400}
+h1,h2,h3,h4,h5,h6,.page-header h1,.brandtitle{color:#111514;letter-spacing:-.4px!important;font-weight:700}
+.muted,.small-note,.brandsub,.subtxt{color:#737d77!important}
+input,select,textarea,.input,.form-control,.field{background:#fff!important;color:#151817!important;border:1px solid #dfe7e1!important;border-radius:15px!important;box-shadow:none!important}
+input:focus,select:focus,textarea:focus,.input:focus,.field:focus{border-color:#13a75b!important;box-shadow:0 0 0 4px rgba(27,174,93,.11)!important;outline:0}
+input::placeholder,textarea::placeholder{color:#a3ada6!important}
+/* Clean paper-like cards and subtle green accents */
+.card,.panel,.sale-products,.sale-cart,.catalog-card,.login-layout,.login-card,
+.milo-skel-product,.milo-skel-tile,.milo-skel-table,.milo-skel-chart,
+.order-card,.stat,.statbox,.stat-tile,.widget,.toolbar,.store-tile,
+.metric,.table-wrap,.summarycard,.product-card,.modal-card{
+ background:#fff!important;border-color:#e6ece8!important;
+ box-shadow:0 10px 28px rgba(30,52,36,.045)!important;border-radius:22px!important
+}
+/* Black primary actions as reference; green for positive/connected state */
+.btn.primary,.primary,button.primary,.nav .basket,.nav a.basket,.add,
+button[type=submit].primary,.checkout-btn,#checkout{
+ background:#111514!important;color:#fff!important;border-color:#111514!important;
+ box-shadow:0 9px 22px rgba(0,0,0,.10)!important;border-radius:999px!important
+}
+.btn.primary:hover:not(:disabled),.primary:hover:not(:disabled),.checkout-btn:hover:not(:disabled){background:#303632!important}
+.btn.secondary,.btn.outline,.btn:not(.primary):not(.danger),.ghostbtn,.iconbtn,
+.icon-button,.nav a:not(.basket),.chip,.navitem,.pill{border-radius:999px!important}
+.btn.secondary,.btn.outline,.btn:not(.primary):not(.danger){background:#fff!important;color:#151817!important;border:1px solid #e3eae5!important}
+.btn.secondary:hover,.btn.outline:hover{background:#f0f7f2!important}
+.btn.danger,.danger,.pill.warn,.status-error{color:#b03c40!important}
+/* Navigation */
+.topbar,.head,.sidebar,.side,.topnav,.main-footer{background:#fff!important;border-color:#e8ede9!important;box-shadow:none!important}
+.topnav button,.navitem{color:#4e5851!important;background:transparent!important}
+.topnav button.active,.navitem.active,.nav a.active,.chip.active,.category-strip button.active{
+ background:#111514!important;color:#fff!important;border-color:#111514!important
+}
+.topnav button:hover,.navitem:hover{background:#eff7f1!important;color:#111514!important}
+.brand-emblem,.brandmark,.brand-symbol{background:#111514!important;color:#fff!important;box-shadow:0 7px 18px #00000016!important}
+/* Retail login and storefront hero */
+.login-screen,.auth-screen{background:#f8faf8!important}
+.login-hero,.auth-visual,.hero{background:linear-gradient(135deg,#111514 0%,#252c28 80%,#105936 100%)!important;color:#fff!important}
+.login-hero h1,.auth-visual h1,.hero h1{color:#fff!important}
+.login-hero h1 span,.hero .eyebrow,.intro-kicker{color:#89e6b0!important}
+.login-hero>p:not(.eyebrow),.auth-visual p,.hero p{color:#e9f7ee!important}
+.hero-chips span{color:#e5f7e9!important;border-color:#507b61!important;background:#264c35!important}
+/* Product tiles and search filters */
+.catalog-card{transition:transform .18s ease,box-shadow .18s ease!important}
+.catalog-card:hover{transform:translateY(-2px);box-shadow:0 15px 32px rgba(27,59,34,.09)!important}
+.chip,.category-strip button,.toolbar select{background:#fff!important;color:#29372e!important;border-color:#e1e9e2!important}
+.chip.active{background:#111514!important;color:#fff!important}
+.sale-cart:before{background:#14ad60!important}
+/* Real-time and success signals */
+.live-dot,.milo-live-dot,.online:before,.connection.online:before{color:#0eaa56!important;background:#10b45d!important}
+.pill:not(.warn):not(.gray),.statuspill,.success,.global-msg:not(.bad){background:#e0f4e8!important;color:#117f43!important;border-color:#cbead6!important}
+.connection,.statuspill,.status-ok{background:#e4f5e9!important;color:#118646!important;border-color:#caead3!important}
+.stat-icon,.metric-icon,.avatar{background:#e5f6eb!important;color:#138a48!important}
+.bar,.chart-bar{background:linear-gradient(180deg,#17b865,#0b9550)!important}
+/* Loader and skeleton matching the theme */
+.milo-progress-track{background:#e9f0eb!important}
+.milo-progress-track>span{background:linear-gradient(90deg,#0f9850,#25c777,#a9ebc5)!important}
+.milo-progress-note{background:#fff!important;border-color:#e5eee8!important;color:#171d19!important;box-shadow:0 9px 22px #071c1012!important}
+.milo-skel-spinner{background:#eef4ef!important}
+.milo-skel-spinner:after{border-color:#d8eadd!important;border-top-color:#0ba355!important}
+.milo-skel-caption{color:#161b17!important}
+.milo-skel-caption small{color:#859188!important}
+.milo-skel-line,.milo-skel-dot,.milo-skel-photo,.milo-skel-cell,.milo-skel-chart span{background:#e8eee9!important}
+/* Admin dashboard */
+.side{border-inline-end:1px solid #e8ede9!important}
+.side-brand,.side-brand strong,.topbar h1,.panel h3{color:#141917!important}
+.side-brand small{color:#859088!important}
+.table th{background:#f3f8f4!important;color:#58665c!important}
+.table tr:hover td{background:#f7fcf9!important}
+/* Customer pages */
+.topline{background:#111514!important;color:#fff!important}
+.nav .count,.count{background:#e4f8eb!important;color:#107e42!important}
+/* Focus and print */
+:focus-visible{outline:2px solid #0d9950!important;outline-offset:2px}
+@media(max-width:680px){.card,.panel,.catalog-card,.sale-cart,.sale-products{border-radius:18px!important}.btn.primary,.primary{min-height:43px}}
+@media(prefers-reduced-motion:reduce){.catalog-card{transition:none!important}}
+@media print{body{background:#fff!important}#receipt,#receipt *{color:#000!important;background:#fff!important;box-shadow:none!important}}

@@ -932,10 +932,11 @@ function miloUploadProductImage_(storeCode,req){
  try{
   const bytes=Utilities.base64Decode(data.slice(data.indexOf(',')+1));
   if(bytes.length>700000)return fail_('photo_too_large','الصورة تتجاوز الحد المسموح');
-  const props=PropertiesService.getScriptProperties(),propKey='MILO_PRODUCT_PHOTO_FOLDER_ID';let folder;
-  const folderId=props.getProperty(propKey);
-  if(folderId){try{folder=DriveApp.getFolderById(folderId)}catch(e){folder=null}}
-  if(!folder){folder=DriveApp.createFolder('MILO CASHIER - Product Images');props.setProperty(propKey,folder.getId())}
+  // Fixed owner-selected Google Drive folder. Never create an alternative folder silently.
+  const folderId='1IVEXo8_hOmjQJt0VtLPoDfsmZc_D8jIE';
+  let folder;
+  try{folder=DriveApp.getFolderById(folderId);folder.getName();}
+  catch(e){return fail_('photo_folder_access','تعذر الوصول إلى مجلد صور المنتجات المحدد. تأكد أن حساب نشر Apps Script يمتلك صلاحية التحرير للمجلد.');}
   const safeStore=storeCode.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),safeBarcode=barcode.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,60);
   const file=folder.createFile(Utilities.newBlob(bytes,'image/jpeg',safeStore+'_'+safeBarcode+'_'+Date.now()+'.jpg'));
   try{file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW)}catch(e){file.setTrashed(true);return fail_('photo_permissions','تعذر السماح بعرض الصورة بواسطة رابط عام. تحقق من إعدادات مشاركة Google Drive.')}
