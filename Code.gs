@@ -3,7 +3,7 @@ const SHEETS = { accounts:'Accounts', products:'Products', reports:'Reports', sh
 const ACCOUNT_HEADERS = ['store_code','username','password','owner_name','store_name','vat_number','district','phone','address','subscription_end','days_left','status','notes'];
 const PRODUCT_HEADERS = ['store_code','barcode','name','price','wholesale_price','cost_price','stock','category','unit','min_stock','description','image_url','unlimited_stock','restaurant_options_json'];
 const REPORT_DAILY_HEADERS = ['store_code','report_id','device_code','report_date','invoice_count','subtotal','sales_total','vat','discount','cash','card','cost','gross_profit','top_products_json','updated_at','terminal_id','terminal_name'];
-const REPORT_HEADERS = ['store_code','invoice_id','date','cashier','customer','customer_phone','subtotal','discount','total','vat','cash','card','change','terminal','items_count','items','print_status','print_token','print_time','print_error','terminal_name'];
+const REPORT_HEADERS = ['store_code','invoice_id','date','cashier','customer','customer_phone','subtotal','discount','total','vat','cash','card','change','terminal','items_count','items','print_status','print_token','print_time','print_error','terminal_name','service_type'];
 const SHIFT_HEADERS = ['store_code','shift_id','terminal','cashier','opened_at','closed_at','opening_cash','closing_cash','expected_cash','invoice_count','cash_sales','card_sales','total_sales','vat','discount','updated_at'];
 const CONTACT_HEADERS = ['store_code','contact_id','name','phone','address','vat_number','balance','notes','updated_at'];
 const DELETED_HEADERS = ['store_code','entity_type','record_key','deleted_at'];
@@ -362,13 +362,13 @@ function deleteEntity_(storeCode,entityType,recordId){
 function reports_(storeCode,from,to){ensureSheet_(book_(),SHEETS.reports,REPORT_HEADERS);if(from&&!/^\d{4}-\d{2}-\d{2}$/.test(from))throw Error('تاريخ البداية غير صحيح');if(to&&!/^\d{4}-\d{2}-\d{2}$/.test(to))throw Error('تاريخ النهاية غير صحيح');
  const t=table_(SHEETS.reports);requireCols_(t,['store_code','invoice_id','date']);const out=[];
  for(let r=1;r<t.values.length;r++){const v=t.values[r];if(str_(col_(t,v,'store_code'))!==storeCode)continue;let raw=col_(t,v,'date');let date=raw instanceof Date?Utilities.formatDate(raw,Session.getScriptTimeZone(),'yyyy-MM-dd HH:mm:ss'):str_(raw);const day=date.slice(0,10);if((from&&day<from)||(to&&day>to))continue;
- out.push({invoiceId:str_(col_(t,v,'invoice_id')),date,terminalName:str_(col_(t,v,'terminal_name')),cashier:str_(col_(t,v,'cashier')),customer:str_(col_(t,v,'customer')),customerPhone:str_(col_(t,v,'customer_phone')),subtotal:num_(col_(t,v,'subtotal')),discount:num_(col_(t,v,'discount')),total:num_(col_(t,v,'total')),vat:num_(col_(t,v,'vat')),cash:num_(col_(t,v,'cash')),card:num_(col_(t,v,'card')),change:num_(col_(t,v,'change')),terminal:str_(col_(t,v,'terminal')),itemsCount:num_(col_(t,v,'items_count')),items:str_(col_(t,v,'items'))});}
+ out.push({invoiceId:str_(col_(t,v,'invoice_id')),date,terminalName:str_(col_(t,v,'terminal_name')),cashier:str_(col_(t,v,'cashier')),customer:str_(col_(t,v,'customer')),customerPhone:str_(col_(t,v,'customer_phone')),subtotal:num_(col_(t,v,'subtotal')),discount:num_(col_(t,v,'discount')),total:num_(col_(t,v,'total')),vat:num_(col_(t,v,'vat')),cash:num_(col_(t,v,'cash')),card:num_(col_(t,v,'card')),change:num_(col_(t,v,'change')),terminal:str_(col_(t,v,'terminal')),itemsCount:num_(col_(t,v,'items_count')),items:str_(col_(t,v,'items')),serviceType:str_(col_(t,v,'service_type'))});}
  out.sort((a,b)=>b.date.localeCompare(a.date));return out;
 }
 function addInvoice_(storeCode,inv,skipStockDeduction){ensureSheet_(book_(),SHEETS.reports,REPORT_HEADERS);const id=str_(inv.invoiceId),terminal=str_(inv.terminal);if(!id)throw Error('رقم الفاتورة ناقص');const lock=LockService.getScriptLock();lock.waitLock(25000);try{
  const t=table_(SHEETS.reports);requireCols_(t,['store_code','invoice_id']);for(let i=1;i<t.values.length;i++){const v=t.values[i];if(str_(col_(t,v,'store_code'))===storeCode&&str_(col_(t,v,'invoice_id'))===id&&str_(col_(t,v,'terminal'))===terminal)return false;}
  const items=Array.isArray(inv.items)?inv.items:[];if(items.length>500)throw Error('عدد المنتجات كبير جدًا');
- const values={store_code:storeCode,invoice_id:id,date:str_(inv.date),cashier:str_(inv.cashier),customer:str_(inv.customer),customer_phone:str_(inv.customerPhone),subtotal:num_(inv.subtotal),discount:num_(inv.discount),total:num_(inv.total),vat:num_(inv.vat),cash:num_(inv.cash),card:num_(inv.card),change:num_(inv.change),terminal,terminal_name:safeCell_(str_(inv.terminalName).slice(0,80)),items_count:items.length,items:items.map(it=>str_(it.name)+' ×'+num_(it.qty)+' = '+num_(it.total)).join(' | ')};
+ const values={store_code:storeCode,invoice_id:id,date:str_(inv.date),cashier:str_(inv.cashier),customer:str_(inv.customer),customer_phone:str_(inv.customerPhone),subtotal:num_(inv.subtotal),discount:num_(inv.discount),total:num_(inv.total),vat:num_(inv.vat),cash:num_(inv.cash),card:num_(inv.card),change:num_(inv.change),terminal,terminal_name:safeCell_(str_(inv.terminalName).slice(0,80)),items_count:items.length,items:items.map(it=>str_(it.name)+' ×'+num_(it.qty)+' = '+num_(it.total)).join(' | '),service_type:safeCell_(str_(inv.serviceType||''))};
  t.sh.appendRow(t.headers.map(h=>values[h]===undefined?'':values[h]));
  // The terminal already decremented local stock and queued an absolute stock value.
  // Avoid deducting again for synced invoices and historical backfill.
@@ -403,7 +403,7 @@ function claimPrint_(storeCode){
    t.sh.getRange(row,t.idx.print_token+1).setValue(token);
    t.sh.getRange(row,t.idx.print_error+1).clearContent();
    const get=k=>col_(t,v,k);
-   return {ok:true,job:{token,invoiceId:str_(get('invoice_id')),date:get('date') instanceof Date?Utilities.formatDate(get('date'),Session.getScriptTimeZone(),"yyyy-MM-dd HH:mm:ss"):str_(get('date')),cashier:str_(get('cashier')),customer:str_(get('customer')),subtotal:num_(get('subtotal')),discount:num_(get('discount')),total:num_(get('total')),vat:num_(get('vat')),cash:num_(get('cash')),card:num_(get('card')),items:str_(get('items'))}};
+   return {ok:true,job:{token,invoiceId:str_(get('invoice_id')),date:get('date') instanceof Date?Utilities.formatDate(get('date'),Session.getScriptTimeZone(),"yyyy-MM-dd HH:mm:ss"):str_(get('date')),cashier:str_(get('cashier')),customer:str_(get('customer')),subtotal:num_(get('subtotal')),discount:num_(get('discount')),total:num_(get('total')),vat:num_(get('vat')),cash:num_(get('cash')),card:num_(get('card')),items:str_(get('items')),serviceType:str_(get('service_type'))}};
   }return {ok:true,job:null};
  }finally{lock.releaseLock();}
 }
@@ -869,7 +869,7 @@ function miloCompleteCustomerOrder_(store,req,account){
   const now=new Date().toISOString();
   const invoice={invoiceId,orderNumber:String(parseInt(id.replace(/-/g,'').slice(-8),16)),date:now,
    terminal,terminalName:safeCell_(str_(req.terminalName).slice(0,80)),cashier,
-   customer:str_(col_(orders,row,'customer_name')),customerPhone:str_(col_(orders,row,'customer_phone')),
+   customer:str_(col_(orders,row,'customer_name')),customerPhone:str_(col_(orders,row,'customer_phone')),serviceType:'سفري',fulfillment:str_(col_(orders,row,'fulfillment')),
    subtotal:total,discount:0,total,vat,cash:method==='cash'?total:0,card:method==='card'?total:0,change:0,
    items:items.map(it=>({barcode:str_(it.barcode),name:str_(it.name),qty:num_(it.qty),price:num_(it.price),total:num_(it.total)}))};
   if(!previous){
@@ -881,7 +881,7 @@ function miloCompleteCustomerOrder_(store,req,account){
    }
    const values={store_code:store,invoice_id:invoiceId,date:now,cashier:safeCell_(cashier),customer:safeCell_(invoice.customer),customer_phone:invoice.customerPhone,
     subtotal:total,discount:0,total,vat,cash:invoice.cash,card:invoice.card,change:0,
-    terminal,terminal_name:invoice.terminalName,items_count:invoice.items.length,
+    terminal,terminal_name:invoice.terminalName,items_count:invoice.items.length,service_type:invoice.serviceType||'سفري',
     items:invoice.items.map(it=>safeCell_(it.name)+' ×'+it.qty+' = '+it.total).join(' | ')};
    // Reports remains the original accounting sheet with its existing schema.
    reports.sh.appendRow(reports.headers.map(h=>values[h]===undefined?'':values[h]));
@@ -917,7 +917,7 @@ function miloGetCustomerOrderInvoice_(store,req){
  let items=[];try{items=JSON.parse(str_(col_(t,order,'items_json')));}catch(_){}
  const get=k=>col_(reports,sale,k);
  return {ok:true,invoice:{invoiceId,orderNumber:String(parseInt(id.replace(/-/g,'').slice(-8),16)),date:str_(get('date')),
-  cashier:str_(get('cashier')),customer:str_(get('customer')),customerPhone:str_(get('customer_phone')),
+  cashier:str_(get('cashier')),customer:str_(get('customer')),customerPhone:str_(get('customer_phone')),serviceType:str_(get('service_type'))||'سفري',fulfillment:str_(col_(t,order,'fulfillment')),
   terminal:str_(get('terminal')),terminalName:str_(get('terminal_name')),subtotal:num_(get('subtotal')),
   discount:num_(get('discount')),total:num_(get('total')),vat:num_(get('vat')),
   cash:num_(get('cash')),card:num_(get('card')),change:num_(get('change')),items}};

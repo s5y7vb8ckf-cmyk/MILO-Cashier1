@@ -1282,3 +1282,75 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
 
 /* Online orders dashboard */
 .milo-online-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:16px;margin-top:18px}.milo-online-card{padding:18px;display:flex;flex-direction:column;gap:12px}.milo-online-card p{margin:0}.milo-online-head,.milo-online-stats{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.milo-online-stats{background:#fff;border:1px solid #dfebed;border-radius:14px;padding:14px}.milo-online-lines{border-top:1px solid #e7eded;border-bottom:1px solid #e7eded;padding:8px 0}.milo-online-lines>div{display:flex;justify-content:space-between;gap:8px;padding:6px 0}.milo-online-card label{font-weight:700}
+
+
+/* Premium bilingual restaurant receipt */
+#receipt.print-receipt:not(.milo-special-ticket) .milo-bilingual-meta{display:grid!important;grid-template-columns:1fr!important;gap:1mm!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-row{display:grid!important;grid-template-columns:1fr auto 1fr!important;gap:1.5mm!important;align-items:center!important;direction:ltr!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-row .en{text-align:left!important;font-size:10px!important;font-weight:700!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-row .value{text-align:center!important;font-size:10px!important;font-weight:700!important;direction:ltr!important;unicode-bidi:isolate!important;overflow-wrap:anywhere!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-row .ar{text-align:right!important;font-size:10px!important;font-weight:700!important;direction:rtl!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number{margin:2mm 0 1.5mm!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-order-number span{font-size:10px!important;font-weight:800!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-service-badge{display:block!important;text-align:center!important;background:#111!important;color:#fff!important;padding:1.1mm 2mm!important;margin:0 auto 1.5mm!important;font-weight:800!important;font-size:12px!important;border-radius:1mm!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-th-dual{display:flex!important;justify-content:space-between!important;gap:2mm!important;align-items:center!important;direction:ltr!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-th-dual .en{text-align:left!important;font-size:9px!important;font-weight:800!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-th-dual .ar{text-align:right!important;font-size:10px!important;font-weight:900!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-label{display:flex!important;justify-content:space-between!important;gap:2mm!important;align-items:center!important;direction:ltr!important;width:100%!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-label .en{text-align:left!important;font-size:10px!important;font-weight:700!important}
+#receipt.print-receipt:not(.milo-special-ticket) .milo-dual-label .ar{text-align:right!important;font-size:10px!important;font-weight:800!important;direction:rtl!important}
+#receipt.print-receipt:not(.milo-special-ticket) .receipt-summary .rline span{display:block!important;width:100%!important}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .milo-dual-row{grid-template-columns:1fr auto 1fr!important;gap:1mm!important}
+#receipt.print-receipt:not(.milo-special-ticket)[data-paper="58"] .milo-service-badge{font-size:10px!important}
+
+
+/* MILO 2026 — XRAED-inspired light monochrome / soft sage theme.
+   Visual styling only: no changes to sales, sync, data, or thermal receipts. */
+:root{
+ --navy:#171918;--navy-2:#262927;--navy-3:#333734;
+ --emerald:#438f54;--emerald-2:#327b43;--mint:#e1eee5;
+ --pistachio:#eaf3ec;--sky:#f4f7f4;--paper:#f7f8f6;
+ --card:#ffffff;--line:#e5e9e5;--ink:#141716;--muted:#777e79;
+ --shadow:0 10px 32px rgba(19,27,20,.055);
+}
+body{background:#f8f9f7;color:#141716}
+.topbar,.topbar-row,.topnav{background:#fff}
+.topbar{border-bottom:1px solid #e8ece8;box-shadow:0 4px 22px #151a1510}
+.topbar .brand-inline strong,.page-header h1{color:#111}
+.topbar .brand-inline small{color:#777}
+.topbar .brand-emblem,.brand-emblem{background:#e1efe5;color:#327c45;border-color:#d3e5d8}
+.topbar .btn.outline,.sidebar-toggle{background:#fff;color:#171a18;border-color:#e7eae6}
+.connection{background:#e3f0e7;color:#367d48}
+.connection i{background:#49a15c}
+.user-avatar{background:#f5f7f4;color:#222;border-color:#e6e9e5}
+.pos-sidebar{background:#fff;color:#222;border-left:1px solid #e6eae6;box-shadow:-6px 0 30px #171b1710}
+.side-brand{border-bottom:1px solid #ecefec}
+.side-brand-symbol{background:#111;color:#fff}
+.side-brand b{color:#111}
+.side-brand small,.side-group-label{color:#858b86}
+.side-link{color:#404641}
+.side-link:hover{background:#f2f5f1;color:#111}
+.side-link.active{background:#111;color:#fff;border-color:#111;box-shadow:0 7px 17px #11111120}
+.workspace{background:#f8f9f7}
+.page-header,.card,.panel,.metric,.modal-panel{background:#fff;border-color:#e7ebe7;box-shadow:0 8px 28px #151a1509}
+.page-header{border-radius:24px}
+.btn{border-radius:999px}
+.btn.primary{background:#111;color:#fff;border-color:#111;box-shadow:0 7px 17px #11111118}
+.btn.primary:hover:not(:disabled){background:#292b29}
+.btn.secondary{background:#e2efe6;color:#367d48;border-color:#d6e7da}
+.btn.outline{background:#fff;color:#151715;border-color:#e5e9e5}
+.btn.danger{background:#fff1f0;color:#a83e40}
+.topnav button.active{background:#111;border-color:#111;box-shadow:none;color:#fff}
+.topnav button:hover{background:#e9f2eb;color:#367d48}
+.input,textarea,select{background:#fff;border-color:#e3e7e3;border-radius:14px;color:#161816}
+.input:focus,textarea:focus,select:focus{border-color:#4a9a60;box-shadow:0 0 0 3px #4a9a601c}
+.login-screen{background:#f8f9f7}
+.login-layout{border:1px solid #e7ebe7;box-shadow:0 24px 80px #151a1514}
+.login-hero{background:linear-gradient(145deg,#171a18,#343b35)}
+.login-hero h1 span{color:#b9dfc3}
+.login-hero>p:not(.eyebrow){color:#e0e8e1}
+.login-form-side{background:#fff}
+.brand-emblem.large{background:#e5f0e7;color:#327d45;border-color:#d2e5d7}
+.eyebrow,a{color:#408d54}
+.toast{background:#171a18;color:#fff}
+/* Do not restyle print content: thermal receipts remain black and white. */
