@@ -1314,3 +1314,28 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
 .milo-product-save-status{margin:0 30px 17px;min-height:66px;display:flex;align-items:center;gap:12px;border:1px solid #cbe7df;border-radius:13px;padding:13px 17px;background:#f0faf7;position:relative;overflow:hidden}.milo-product-save-status[hidden]{display:none!important}.milo-product-save-status strong,.milo-product-save-status small{display:block}.milo-product-save-status strong{font-size:14px;color:#20554b}.milo-product-save-status small{font-size:12px;color:#627b75;margin-top:4px}.milo-product-status-icon{width:33px;height:33px;min-width:33px;background:#00796b;color:white;border-radius:100%;display:grid;place-items:center;font-weight:800;font-size:18px}.milo-product-save-status.error{background:#fff7f5;border-color:#f0cec8}.milo-product-save-status.error .milo-product-status-icon{background:#b94739}.milo-product-save-status.error strong{color:#a43f33}.milo-product-progress{position:absolute;bottom:0;right:0;width:40%;height:3px;background:#00a693;animation:milo-product-progress 1.5s ease-in-out infinite}.milo-ring{height:17px;width:17px;border:2px solid #a9d9ce;border-top-color:#fff;border-radius:50%;animation:milo-product-spin .75s linear infinite}@keyframes milo-product-spin{to{transform:rotate(360deg)}}@keyframes milo-product-progress{0%{right:-40%}100%{right:100%}}
 @media(max-width:700px){.milo-editor-intro{padding:20px;align-items:flex-start}.milo-editor-form-wrap{padding:19px}.milo-editor-form-wrap #productForm{grid-template-columns:1fr}.milo-editor-footer{padding:18px;flex-direction:column;align-items:stretch}.milo-editor-buttons{width:100%}.milo-editor-buttons .btn{flex:1}.milo-product-save-status{margin:0 18px 14px}}
 @media(prefers-reduced-motion:reduce){.milo-save-spinner,.milo-ring,.milo-product-progress{animation:none}}
+
+
+/* MILO premium opening / closing shift progress */
+.milo-shift-processing[hidden]{display:none!important}
+.milo-shift-processing{position:fixed;inset:0;z-index:999999;background:rgba(12,39,36,.52);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px;direction:rtl}
+.milo-shift-processing-card{width:min(420px,100%);position:relative;overflow:hidden;text-align:center;border:1px solid #d4e8e2;border-radius:24px;background:linear-gradient(150deg,#f5fffc,#fff 56%);box-shadow:0 30px 85px rgba(4,49,43,.23);padding:37px 27px 29px;animation:milo-shift-appear .24s ease-out both}
+.milo-shift-processing-card::before{content:'';position:absolute;top:0;right:0;left:0;height:4px;background:linear-gradient(90deg,#66d2c6,#00796b,#00a693)}
+.milo-shift-symbol{height:74px;width:74px;border-radius:22px;display:grid;place-items:center;background:#e8f8f5;margin:0 auto 20px;box-shadow:inset 0 0 0 1px #c8e9df;color:#00796b}
+.milo-shift-spinner{display:block;width:38px;height:38px;border:3px solid #ccebe2;border-top-color:#00796b;border-radius:50%;animation:milo-shift-turn .85s linear infinite}
+.milo-shift-tick,.milo-shift-cross{display:none;width:39px;height:39px}
+.milo-shift-brand{font-size:10px;letter-spacing:2.1px;font-weight:800;color:#008b79;direction:ltr}
+.milo-shift-processing-card h2{font-size:22px;line-height:1.5;margin:10px 0 7px;color:#163f39;font-weight:850}
+.milo-shift-processing-card p{font-size:13px;line-height:1.9;color:#647e77;margin:0;min-height:25px}
+.milo-shift-track{margin:24px auto 0;height:4px;border-radius:9px;overflow:hidden;background:#e6f2ef;max-width:260px}
+.milo-shift-track i{display:block;height:100%;width:40%;border-radius:9px;background:linear-gradient(90deg,#00796b,#66d2c6);animation:milo-shift-progress 1.4s ease-in-out infinite}
+.milo-shift-processing[data-status="success"] .milo-shift-symbol{background:#def7eb;color:#00865a}
+.milo-shift-processing[data-status="success"] .milo-shift-spinner,.milo-shift-processing[data-status="error"] .milo-shift-spinner{display:none}
+.milo-shift-processing[data-status="success"] .milo-shift-tick,.milo-shift-processing[data-status="error"] .milo-shift-cross{display:block}
+.milo-shift-processing[data-status="success"] .milo-shift-track i{width:100%;animation:none;background:#12a675}
+.milo-shift-processing[data-status="error"] .milo-shift-symbol{background:#fff0ed;color:#ba4539}
+.milo-shift-processing[data-status="error"] .milo-shift-track i{width:100%;animation:none;background:#ba4539}
+@keyframes milo-shift-turn{to{transform:rotate(360deg)}}
+@keyframes milo-shift-progress{0%{transform:translateX(270%)}100%{transform:translateX(-270%)}}
+@keyframes milo-shift-appear{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.milo-shift-spinner,.milo-shift-track i,.milo-shift-processing-card{animation:none}}

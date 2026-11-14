@@ -690,9 +690,53 @@ function renderReportData(){
 }
 function exportReport(){const rows=state.reportCache||[];const headers=['invoiceId','date','cashier','terminalName','customer','subtotal','discount','vat','total','cash','card','change'];const csv='\ufeff'+[headers.join(','),...rows.map(row=>headers.map(k=>'"'+String(row[k]??'').replace(/"/g,'""')+'"').join(','))].join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='MILO-REPORT-'+isoDay()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 
+/* MILO shift processing UI — runs only during genuine server operations. */
+let miloShiftBusy=false;
+let miloShiftNoticeTimer=null;
+function miloShiftOverlay(){
+ let root=$('miloShiftProcessing');
+ if(root)return root;
+ root=document.createElement('section');
+ root.id='miloShiftProcessing';
+ root.className='milo-shift-processing';
+ root.setAttribute('role','status');
+ root.setAttribute('aria-live','polite');
+ root.setAttribute('aria-atomic','true');
+ root.hidden=true;
+ root.innerHTML=`<div class="milo-shift-processing-card" dir="rtl"><div class="milo-shift-symbol" aria-hidden="true"><span class="milo-shift-spinner"></span><svg class="milo-shift-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg><svg class="milo-shift-cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div><div class="milo-shift-brand">MILO CASHIER</div><h2 id="miloShiftProcessingTitle"></h2><p id="miloShiftProcessingText"></p><div class="milo-shift-track" aria-hidden="true"><i></i></div></div>`;
+ document.body.appendChild(root);
+ return root;
+}
+function miloShiftShow(status,title,description){
+ const root=miloShiftOverlay();
+ clearTimeout(miloShiftNoticeTimer);
+ root.hidden=false;root.dataset.status=status;
+ $('miloShiftProcessingTitle').textContent=title;
+ $('miloShiftProcessingText').textContent=description;
+ root.setAttribute('aria-busy',status==='loading'?'true':'false');
+}
+async function miloShiftPerform(operation){
+ if(miloShiftBusy)return;
+ const opening=operation==='open';
+ miloShiftBusy=true;
+ const button=document.querySelector(`[data-action="${opening?'open-shift':'close-shift'}"]`);
+ if(button)button.disabled=true;
+ miloShiftShow('loading',opening?'جارٍ فتح الوردية':'جارٍ إغلاق الوردية',opening?'يتم حفظ بيانات الوردية والتحقق من اتصال النظام...':'يتم مراجعة المبيعات وحفظ تقرير إغلاق الوردية...');
+ try{
+  const result=await (opening?openShift():closeShift());
+  if(result===false){miloShiftOverlay().hidden=true;return;}
+  miloShiftShow('success',opening?'تم فتح الوردية بنجاح':'تم إغلاق الوردية بنجاح',opening?'تم اعتماد ورديتك وحفظها في النظام.':'تم حفظ الإغلاق في النظام، وتجهيز التقرير للطباعة إذا كان مفعّلًا.');
+  miloShiftNoticeTimer=setTimeout(()=>{const el=$('miloShiftProcessing');if(el)el.hidden=true},1800);
+ }catch(error){
+  miloShiftShow('error',opening?'تعذر فتح الوردية':'تعذر إغلاق الوردية',error?.message||'تعذر إكمال العملية. يرجى إعادة المحاولة.');
+  miloShiftNoticeTimer=setTimeout(()=>{const el=$('miloShiftProcessing');if(el)el.hidden=true},3800);
+  // Preserve the error for the event handler, which displays the existing error notification.
+  throw error;
+ }finally{miloShiftBusy=false;if(button&&button.isConnected)button.disabled=false;}
+}
 /* Cashier shifts */
 async function renderShiftsPage(){const r=await api('shifts');state.shifts=r.shifts||[];state.activeShift=state.shifts.find(x=>!x.closed_at&&String(x.terminal)===terminalId())||null;hdr('الورديات والصندوق','رصيد افتتاحي وإغلاق ومطابقة صندوق كل جهاز',btn('تحديث','reload-page','','secondary'));setContent(`<div class="columns2"><div class="card"><h2>${state.activeShift?'الوردية الحالية مفتوحة':'فتح وردية جديدة'}</h2>${state.activeShift?`<div class="stack">${info('وردية الجهاز: '+state.terminalName,'good')}<p>اسم الكاشير: <b>${esc(state.activeShift.cashier||'—')}</b></p><p>تاريخ الفتح: ${esc(vDate(state.activeShift.opened_at))}</p><p>رصيد البداية: <b>${amt(state.activeShift.opening_cash)}</b></p><label>النقد الموجود فعليًا<input class="input" id="closingBalance" type="number" min="0" step="0.01" value="0"></label><button class="btn primary" data-action="close-shift" data-commit>حفظ إغلاق الوردية</button></div>`:`<div class="stack"><label>اسم الكاشير <span style="color:#B42318">*</span><input class="input" id="openingCashierName" type="text" maxlength="100" autocomplete="name" required placeholder="اكتب اسم الكاشير المسؤول عن الوردية"></label><label>المبلغ النقدي الابتدائي<input class="input" id="startingBalance" type="number" min="0" step="0.01" value="0"></label><button class="btn primary" data-action="open-shift" data-commit>فتح الوردية</button></div>`}</div><div class="card"><h2>ملخص</h2><p>الجهاز: <b>${esc(state.terminalName)}</b></p><p>كود الجهاز: <small>${esc(terminalId())}</small></p><p class="small-note">حساب حركة الوردية يستند إلى سجلات Reports خلال الفترة. لا تُجرِ عمليات قفل متعدد الكاشيرات دون ترقية التحقق الخادمي.</p></div></div><div class="panel" style="margin-top:15px"><h2>سجل الورديات</h2>${tabular(['الجهاز','الكاشير','تاريخ الفتح','الإغلاق','بداية الصندوق','نهاية الصندوق','الحالة','التقرير'],state.shifts.slice().reverse().map(s=>`<tr><td>${esc(s.terminal)}</td><td>${esc(s.cashier||'—')}</td><td>${esc(vDate(s.opened_at))}</td><td>${s.closed_at?esc(vDate(s.closed_at)):'—'}</td><td>${amt(s.opening_cash)}</td><td>${s.closed_at?amt(s.closing_cash):'—'}</td><td><span class="tag ${s.closed_at?'':'amber'}">${s.closed_at?'مغلقة':'مفتوحة'}</span></td><td>${s.closed_at?btn('إعادة طباعة التقرير','print-closed-shift',s.shift_id,'secondary'): '—'}</td></tr>`).join(''))}</div>`)}
-async function openShift(){const cashier=String($('openingCashierName')?.value||'').trim().replace(/\s+/g,' ');if(!cashier)throw Error('اكتب اسم الكاشير قبل فتح الوردية');if(cashier.length>100)throw Error('اسم الكاشير طويل جدًا');const start=n($('startingBalance')?.value);if(start<0)throw Error('رصيد افتتاحي غير صالح');const shift={shift_id:uid(),terminal:terminalId(),cashier,opened_at:dateTime(),closed_at:'',opening_cash:start,closing_cash:0,expected_cash:start,invoice_count:0,cash_sales:0,card_sales:0,total_sales:0,vat:0,discount:0};await api('saveShifts',{shifts:[shift]});await renderShiftsPage();toast('تم فتح الوردية على الخادم')}
+async function openShift(){const cashier=String($('openingCashierName')?.value||'').trim().replace(/\s+/g,' ');if(!cashier)throw Error('اكتب اسم الكاشير قبل فتح الوردية');if(cashier.length>100)throw Error('اسم الكاشير طويل جدًا');const start=n($('startingBalance')?.value);if(start<0)throw Error('رصيد افتتاحي غير صالح');const shift={shift_id:uid(),terminal:terminalId(),cashier,opened_at:dateTime(),closed_at:'',opening_cash:start,closing_cash:0,expected_cash:start,invoice_count:0,cash_sales:0,card_sales:0,total_sales:0,vat:0,discount:0};await api('saveShifts',{shifts:[shift]});await renderShiftsPage();toast('تم فتح الوردية على الخادم');return true}
 // Shift totals must be confirmed against remote invoices BEFORE closing.
 // The server returns UTC ISO timestamps as well as historical Sheets timestamps;
 // normalize both, and expand the day query to avoid missing midnight boundaries.
@@ -732,8 +776,8 @@ async function closeShift(){
  const cash=own.reduce((s,x)=>s+n(x.cash)-n(x.change),0);
  const card=own.reduce((s,x)=>s+n(x.card),0);
  const full={...shift,closed_at:dateTime(),closing_cash:amount,expected_cash:rnd(n(shift.opening_cash)+cash),invoice_count:own.length,cash_sales:rnd(cash),card_sales:rnd(card),total_sales:rnd(own.reduce((s,x)=>s+n(x.total),0)),vat:rnd(own.reduce((s,x)=>s+n(x.vat),0)),discount:rnd(own.reduce((s,x)=>s+n(x.discount),0))};
- if(!own.length&&!window.confirm('لم يجد النظام أي فواتير معتمدة لهذه الوردية. هل أنت متأكد أن الوردية بلا مبيعات وتريد إغلاقها بصفر؟'))return;
- if(own.length&&!window.confirm('تأكيد إغلاق الوردية: '+own.length+' فاتورة، المبيعات '+amt(full.total_sales)+'، النقد '+amt(full.cash_sales)+'، الشبكة '+amt(full.card_sales)+'. هل الأرقام صحيحة؟'))return;
+ if(!own.length&&!window.confirm('لم يجد النظام أي فواتير معتمدة لهذه الوردية. هل أنت متأكد أن الوردية بلا مبيعات وتريد إغلاقها بصفر؟'))return false;
+ if(own.length&&!window.confirm('تأكيد إغلاق الوردية: '+own.length+' فاتورة، المبيعات '+amt(full.total_sales)+'، النقد '+amt(full.cash_sales)+'، الشبكة '+amt(full.card_sales)+'. هل الأرقام صحيحة؟'))return false;
  // Prepare the print snapshot *before* navigating: renderShiftsPage may reset the report cache.
  const closingDay=miloSaudiDay(miloShiftTime(full.closed_at));
  const dayRows=records.filter(i=>{const t=miloShiftTime(i.date);return Number.isFinite(t)&&t<=miloShiftTime(full.closed_at)+60000&&miloSaudiDay(t)===closingDay;});
@@ -743,6 +787,7 @@ async function closeShift(){
  if(printPrefs().shiftReport)void queueReceiptHtml(reportMarkup,printPrefs().paper);
  await renderShiftsPage();
  toast('تم إغلاق الوردية وحفظ التقرير. فرق الصندوق '+amt(amount-full.expected_cash));
+ return true;
 }
 
 async function miloReprintClosedShift(shiftId){
@@ -918,7 +963,7 @@ async function onAction(action,id,button){switch(action){
  case 'rename-category':return renameCategory(id);case 'drop-category':return confirmModal('إلغاء التصنيف','سيتم نقل منتجات التصنيف إلى «عام» دون حذف منتجات.',()=>updateCategory(id,'عام'));
  case 'new-record':return recordEditor(id);case 'edit-record':{const [type,recordId]=id.split('|'),cfg=RECORDS[type];return recordEditor(type,(state[type]||[]).find(x=>String(x[cfg.id])===recordId))}case 'purchase-items':return showPage('purchaseItems')
  case 'search-invoices':return queryInvoices();case 'invoice-detail':return invoiceDetail(id);case 'load-report':return reportData();case 'export-report':return exportReport();
- case 'print-closed-shift':return miloReprintClosedShift(id); case 'open-shift':return openShift();case 'close-shift':return confirmModal('إغلاق الوردية','سيحفظ النظام المبلغ الفعلي وملخص المبيعات في السجل.',closeShift);
+ case 'print-closed-shift':return miloReprintClosedShift(id); case 'open-shift':return miloShiftPerform('open');case 'close-shift':if(miloShiftBusy)return;return confirmModal('إغلاق الوردية','سيحفظ النظام المبلغ الفعلي وملخص المبيعات في السجل.',()=>miloShiftPerform('close'));
  case 'new-manual':return manualEditor();case 'print-manual':{const order=state.manualOrders.find(x=>x.id===id);if(order)return printReceipt(order,false,true);return}
   case 'remove-receipt-logo':localStorage.removeItem('milo_receipt_logo');return toast('تم إزالة شعار الفاتورة');case 'sound-settings':return soundSettingsEditor();case 'test-sound-product':{const old=localStorage.getItem('milo_product_sound');localStorage.setItem('milo_product_sound','1');playMiloSound('product');if(old===null)localStorage.removeItem('milo_product_sound');else localStorage.setItem('milo_product_sound',old);return;}case 'test-sound-error':{const old=localStorage.getItem('milo_error_sound');localStorage.setItem('milo_error_sound','1');playMiloSound('error');if(old===null)localStorage.removeItem('milo_error_sound');else localStorage.setItem('milo_error_sound',old);return;}case 'edit-settings':return settingsEditor();case 'test-print':return printReceipt({id:'TEST-PRINT',date:dateTime(),cashier:state.account?.username||'تجربة',items:[{name:'اختبار طباعة كاشير ميلو',qty:1,price:0,total:0}],notes:'تجربة طباعة فقط — ليست فاتورة بيع'},false,true);case 'print-settings':return printerEditor();case 'edit-device':return deviceEditor();case 'reload-settings':return fetchSettings();
  case 'device-heartbeat':await deviceEvent('heartbeat');return toast('تم إرسال نبضة الاتصال إن كانت صلاحيات الخادم تسمح');case 'test-ping':await api('ping');return toast('تم التحقق من الاتصال بالخادم');
