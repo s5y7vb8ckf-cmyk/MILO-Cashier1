@@ -53,7 +53,7 @@ function authenticate_(req){const username=str_(req.username),password=str_(req.
  const get=k=>str_(col_(t,row,k));const storeCode=get('store_code');if(!storeCode)return fail_('locked','كود المحل غير موجود');
  return {ok:true,account:{storeCode,username:get('username'),ownerName:get('owner_name'),storeName:get('store_name'),vatNumber:get('vat_number'),district:get('district'),phone:get('phone'),address:get('address'),subscriptionEnd:dateStr_(col_(t,row,'subscription_end')),daysLeft:days}};
 }
-function route_(req){const action=str_(req.action);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;
+function route_(req){const action=str_(req.action);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;
  if(action==='login'||action==='ping')return {ok:true,account:auth.account};
   if(action==='customerOrders')return miloCustomerOrders_(storeCode);
   if(action==='updateCustomerOrder')return miloUpdateCustomerOrder_(storeCode,req);
@@ -72,6 +72,7 @@ function route_(req){const action=str_(req.action);if(action.startsWith('admin')
   return {ok:true,products:catalog,productsUnchanged:false,productsRevision:revision};
  }
  if(action==='saveProducts')return saveProducts_(storeCode,req.products);
+ if(action==='uploadProductImage')return miloUploadProductImage_(storeCode,req);
  if(action==='deleteEntity')return deleteEntity_(storeCode,req.entityType,req.recordId);
  if(action==='deletedRecords')return {ok:true,deletedRecords:listDeletedRecords_(storeCode)};
  if(action==='shifts')return {ok:true,shifts:readEntities_(SHEETS.shifts,SHIFT_HEADERS,storeCode)};
@@ -921,4 +922,23 @@ function miloGetCustomerOrderInvoice_(store,req){
   terminal:str_(get('terminal')),terminalName:str_(get('terminal_name')),subtotal:num_(get('subtotal')),
   discount:num_(get('discount')),total:num_(get('total')),vat:num_(get('vat')),
   cash:num_(get('cash')),card:num_(get('card')),change:num_(get('change')),items}};
+}
+
+// MILO product photo upload: authenticated store-scoped JPEGs in Google Drive.
+// Images are published by link for viewing on cashier devices and the customer storefront.
+function miloUploadProductImage_(storeCode,req){
+ const barcode=str_(req.barcode),data=str_(req.imageData);
+ if(!barcode||barcode.length>120||!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(data)||data.length>900000)return fail_('invalid_photo','صورة المنتج غير صالحة أو أكبر من الحجم المسموح');
+ try{
+  const bytes=Utilities.base64Decode(data.slice(data.indexOf(',')+1));
+  if(bytes.length>700000)return fail_('photo_too_large','الصورة تتجاوز الحد المسموح');
+  const props=PropertiesService.getScriptProperties(),propKey='MILO_PRODUCT_PHOTO_FOLDER_ID';let folder;
+  const folderId=props.getProperty(propKey);
+  if(folderId){try{folder=DriveApp.getFolderById(folderId)}catch(e){folder=null}}
+  if(!folder){folder=DriveApp.createFolder('MILO CASHIER - Product Images');props.setProperty(propKey,folder.getId())}
+  const safeStore=storeCode.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50),safeBarcode=barcode.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,60);
+  const file=folder.createFile(Utilities.newBlob(bytes,'image/jpeg',safeStore+'_'+safeBarcode+'_'+Date.now()+'.jpg'));
+  try{file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW)}catch(e){file.setTrashed(true);return fail_('photo_permissions','تعذر السماح بعرض الصورة بواسطة رابط عام. تحقق من إعدادات مشاركة Google Drive.')}
+  return {ok:true,imageUrl:'https://drive.google.com/thumbnail?id='+encodeURIComponent(file.getId())+'&sz=w800'};
+ }catch(e){return fail_('photo_upload_failed','تعذر رفع صورة المنتج إلى Google Drive: '+e.message)}
 }
