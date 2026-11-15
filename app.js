@@ -2,6 +2,9 @@
 /* MILO CASHIER browser client for the REST actions in the user's Code.gs.
    This client intentionally does not claim to fix missing server-side ACL, atomicity or auth. */
 const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycbykLLjtPih4c0JVw1MAk3mQ1BVG-s2TzyUcizmEC5UprlUxOVKAvz_80qLvi0NAiXQE/exec';
+// Read-only device administration uses the separately deployed MILO ADMIN endpoint.
+// Cashier API_URL and its authentication/session remain untouched.
+const MILO_DEVICE_ADMIN_API_URL='https://script.google.com/macros/s/AKfycbw0dyo_MNwxwuxEKa7JiD4pJ-tzT-KJNxB82kZfGLMtaDJ953LK8s2_ss4B5jnR12Pj/exec';
 const $=id=>document.getElementById(id);
 // Login progress follows real application work; it does not claim success before completion.
 function miloSetLoginLoading(visible,message){
@@ -280,10 +283,10 @@ async function authenticate(username,password){const resp=await request({action:
   const group=idx===0?'الرئيسية':idx===4?'المخزون والتشغيل':idx===8?'الإدارة المالية':idx===14?'الإدارة والنظام':'';
   return (group?`<div class="side-group-label sidebar-label">${group}</div>`:'')+`<button type="button" data-page="${key}" class="side-link ${key==='sale'?'active':''}" title="${esc(title)}" aria-label="${esc(title)}"><span class="side-icon" aria-hidden="true">${MiloIcons.svg(ico)}</span><span class="sidebar-label">${esc(title)}</span></button>`;
  }).join('');await MiloLocal.requestDurableStorage();await restoreCachedSnapshots();miloSetLoginLoading(true,'جارٍ تحميل المنتجات وإعدادات المتجر...');await refreshCore();await cacheCoreSnapshots();miloSetLoginLoading(true,'جارٍ تجهيز نقطة البيع...');await showPage(document.body.dataset.initialPage||'sale');await updateQueueBadge();void deviceEvent('open');clearInterval(pollTimer);pollTimer=setInterval(()=>{void syncNow();if(document.visibilityState==='visible')void deviceEvent('heartbeat')},120000);startAccountChecks();void syncNow()}
-function logout(){closeAccountMenu();if(state.auth)void deviceEvent('close');clearInterval(pollTimer);clearInterval(accountCheckTimer);state.auth=null;state.account=null;state.products=[];state.reports=[];state.cart=[];state.held=[];state.pendingInvoice=null;$('app').classList.add('hidden');$('loginScreen').classList.remove('hidden');$('loginPass').value='';$('loginError').textContent='';connection(false,'غير مسجل');closeModal()}
+function logout(){miloDeviceAdminSession=null;miloDeviceRows=[];miloDeviceDetails=null;miloSelectedDevice='';miloDeviceRequestSeq++;closeAccountMenu();if(state.auth)void deviceEvent('close');clearInterval(pollTimer);clearInterval(accountCheckTimer);state.auth=null;state.account=null;state.products=[];state.reports=[];state.cart=[];state.held=[];state.pendingInvoice=null;$('app').classList.add('hidden');$('loginScreen').classList.remove('hidden');$('loginPass').value='';$('loginError').textContent='';connection(false,'غير مسجل');closeModal()}
 async function deviceEvent(type){if(!state.auth)return;try{await api('saveDeviceEvents',{events:[{storeCode:state.account.storeCode,eventId:uid(),deviceCode:deviceCode(),deviceName:state.terminalName,eventType:type,occurredAt:dateTime(),details:'MILO browser'}]})}catch(_){}}
 async function refreshCore(){const settled=await Promise.allSettled([api('products'),api('getStoreSettings'),api('customers'),api('suppliers'),api('shifts')]);const [pr,st,cu,su,sh]=settled;if(pr.status==='fulfilled'){state.products=pr.value.products||[];state.productsRevision=pr.value.productsRevision||'';}if(st.status==='fulfilled')state.settings={...state.settings,...st.value.settings};if(cu.status==='fulfilled')state.customers=cu.value.customers||[];if(su.status==='fulfilled')state.suppliers=su.value.suppliers||[];if(sh.status==='fulfilled')state.shifts=sh.value.shifts||[];state.activeShift=state.shifts.find(x=>!x.closed_at&&String(x.terminal)===terminalId())||null;if(pr.status==='rejected')toast('تعذّر تحديث المنتجات؛ ستبقى البيانات المحفوظة على الجهاز. '+pr.reason.message,true);await cacheCoreSnapshots()}
-async function showPage(page){if(!titles[page])page='sale';state.page=page;document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));window.MiloLoading?.show('content',page);try{const lookup={sale:renderSale,products:renderProductsPage,labels:renderLabelsPage,invoices:renderInvoicesPage,reports:renderReportsPage,smart:renderSmartSuite,inventory:renderInventoryPage,customers:()=>renderEntityPage('customers'),loyalty:renderLoyaltyPage,suppliers:()=>renderEntityPage('suppliers'),purchases:()=>renderEntityPage('purchases'),purchaseItems:()=>renderEntityPage('purchaseItems'),expenses:()=>renderEntityPage('expenses'),vouchers:()=>renderEntityPage('vouchers'),returns:()=>renderEntityPage('returns'),promotions:()=>renderEntityPage('promotions'),employees:()=>renderEntityPage('employees'),shifts:renderShiftsPage,manual:renderManualPage,onlineOrders:renderOnlineOrdersPage,devices:renderDevicesPage,support:renderSupportPage,settings:renderSettingsPage,account:renderAccountPage};await lookup[page]();renderBrowserInstallNotice()}catch(e){hdr(titles[page]);$('content').innerHTML=info(e.message,'danger');toast(e.message,true)}}
+async function showPage(page){if(!titles[page])page='sale';if(page!=='devices')miloDeviceRequestSeq++;state.page=page;document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));window.MiloLoading?.show('content',page);try{const lookup={sale:renderSale,products:renderProductsPage,labels:renderLabelsPage,invoices:renderInvoicesPage,reports:renderReportsPage,smart:renderSmartSuite,inventory:renderInventoryPage,customers:()=>renderEntityPage('customers'),loyalty:renderLoyaltyPage,suppliers:()=>renderEntityPage('suppliers'),purchases:()=>renderEntityPage('purchases'),purchaseItems:()=>renderEntityPage('purchaseItems'),expenses:()=>renderEntityPage('expenses'),vouchers:()=>renderEntityPage('vouchers'),returns:()=>renderEntityPage('returns'),promotions:()=>renderEntityPage('promotions'),employees:()=>renderEntityPage('employees'),shifts:renderShiftsPage,manual:renderManualPage,onlineOrders:renderOnlineOrdersPage,devices:renderDevicesPage,support:renderSupportPage,settings:renderSettingsPage,account:renderAccountPage};await lookup[page]();renderBrowserInstallNotice()}catch(e){hdr(titles[page]);$('content').innerHTML=info(e.message,'danger');toast(e.message,true)}}
 function setContent(html){$('content').innerHTML=html}
 function optionsOf(p){try{const v=JSON.parse(p.restaurantOptionsJson||'{}');return {sizes:Array.isArray(v.sizes)?v.sizes:[],extras:Array.isArray(v.extras)?v.extras:[]}}catch{return {sizes:[],extras:[]}}}
 function categoryNames(){return ['الكل',...new Set(state.products.map(p=>p.category).filter(Boolean))]}
@@ -861,7 +864,141 @@ async function printerEditor(){
  showModal('إعدادات الطباعة والفاتورة',`<div class="stack">${info(nativeMessage)}<div class="grid two">${window.miloDesktop?.isDesktop?`<label>طابعة USB / ويندوز<select id="nativePrinter" class="input">${printerOptions}</select></label>`:''}<label>شعار الفاتورة (اختيار صورة من الجهاز)<input id="receiptLogoPicker" class="input" type="file" accept="image/png,image/jpeg,image/webp"><small>اختياري · يُحفظ على هذا الجهاز فقط · قص الصورة إلى حجم مناسب تلقائيًا</small></label><button type="button" class="btn outline small" data-action="remove-receipt-logo">إزالة شعار الفاتورة</button><label>سياسة الاسترجاع والاستبدال<textarea id="receiptPolicy" class="input" rows="3" maxlength="700" placeholder="اكتب سياسة الاسترجاع">${esc(receiptCustom().policy)}</textarea></label><label class="checkline"><input type="checkbox" id="policyHeadingSetting" ${localStorage.getItem('milo_policy_heading')!=='0'?'checked':''}> <span>إظهار عنوان سياسة الاستبدال والاسترجاع على الفاتورة</span></label><p class="small-note">الطباعة السريعة المعتمدة: يتحقق النظام من الوردية والمخزون، ثم يبدأ طباعة الفاتورة كاملة فور قبول الخادم (بما فيها QR الضريبي إن توفرت بياناته، وباركود الطلب). عند انقطاع الشبكة يمكن طباعة نسخة محلية غير معتمدة فقط.</p><label>نص إضافي أسفل الفاتورة<textarea id="receiptExtra" class="input" rows="2" maxlength="500" placeholder="رسالة إضافية">${esc(receiptCustom().extra)}</textarea></label><label>حجم شعار المحل (%)<input id="receiptLogoSize" class="input" type="number" min="30" max="220" step="10" value="${receiptCustom().logoSize}"></label><label>حجم رمز QR (نقطة)<input id="receiptQrSize" class="input" type="number" min="80" max="320" step="10" value="${receiptCustom().qrSize}"></label><label>طريقة الطباعة<select id="printerMode" class="input"><option value="browser" ${localStorage.getItem('milo_print_mode')!=='bridge'?'selected':''}>طباعة المتصفح</option><option value="bridge" ${localStorage.getItem('milo_print_mode')==='bridge'?'selected':''}>MILO Print Bridge — طباعة USB مباشرة</option></select></label><label>مفتاح MILO Print Bridge (من برنامج ويندوز)<input id="bridgeToken" class="input" type="password" autocomplete="off" value="${esc(localStorage.getItem('milo_bridge_token')||'')}" placeholder="الصق مفتاح الربط هنا"><small>يُحفظ على هذا المتصفح فقط. يتطلب فتح برنامج الطباعة على الكمبيوتر.</small></label><label>مقاس ورق الطابعة<select id="printerPaper" class="input"><option value="80" ${prefs.paper==='80'?'selected':''}>80 ملم</option><option value="58" ${prefs.paper==='58'?'selected':''}>58 ملم</option></select></label><label>حجم خط الفاتورة<select id="receiptFont" class="input"><option value="normal" ${prefs.fontScale==='normal'?'selected':''}>قياسي واضح</option><option value="large" ${prefs.fontScale==='large'?'selected':''}>أكبر وأكثر وضوحًا</option></select></label><label>محاذاة الفاتورة<select id="receiptAlign" class="input"><option value="center" ${prefs.align==='center'?'selected':''}>توسيط المحتوى</option><option value="right" ${prefs.align==='right'?'selected':''}>محاذاة يمين</option></select></label><label>تحريك الفاتورة أفقيًا (ملم)<input id="receiptOffset" class="input" type="number" min="-8" max="8" step="1" value="${prefs.receiptOffset}"></label><label>متى يفتح درج المال؟<select id="drawerMode" class="input"><option value="never" ${prefs.drawer==='never'?'selected':''}>لا يفتح تلقائيًا</option><option value="cash" ${prefs.drawer==='cash'?'selected':''}>عند البيع النقدي أو المختلط</option><option value="all" ${prefs.drawer==='all'?'selected':''}>بعد كل عملية بيع ناجحة</option></select></label><p class="small-note">فتح الدرج يحتاج طابعة ESC/POS متصلة بدرج المال وتدعم أمر فتح الدرج. يتم إرسال نبضة للدرج عند إتمام البيع فقط، وليس عند إعادة طباعة فاتورة. في وضع Bridge يلزم دعم برنامج Windows المحلي لمسار /drawer.</p><button type="button" class="btn outline small" id="miloDrawerBridgeTest">اختبار فتح الدرج عبر Bridge</button><label>هامش جانبي للفاتورة (ملم)<input id="receiptMargin" class="input" type="number" min="0" max="8" step="1" value="${prefs.margin}"></label><label class="checkline"><input id="kitchenPrintSetting" type="checkbox" ${prefs.kitchen?'checked':''}> <span>طباعة تذكرة مطبخ مستقلة بعد فاتورة الزبون عند تفعيل المطعم</span></label><label class="checkline"><input id="shiftPrintSetting" type="checkbox" ${prefs.shiftReport?'checked':''}> <span>طباعة تقرير الوردية + إجمالي اليوم تلقائيًا</span></label><label class="checkline"><input id="showQrSetting" type="checkbox" ${prefs.showQr?'checked':''}> <span>إظهار رمز QR عند توفر بياناته</span></label></div><p class="small-note">اختيار الطابعة وحجم الورق يُحفظ على هذا الكمبيوتر. الطباعة التلقائية لا تعني تأكيد خروج الورقة فعليًا أو القص التلقائي.</p></div>`,[{label:'إلغاء',onClick:closeModal},{label:'حفظ',style:'primary',onClick:async()=>{const chosen=$('nativePrinter')?.value||'';if(window.miloDesktop?.setPrinter)await window.miloDesktop.setPrinter(chosen);state.paper=$('printerPaper').value;localStorage.setItem('milo_paper',state.paper);localStorage.setItem('milo_receipt_policy',$('receiptPolicy').value.slice(0,700));localStorage.setItem('milo_policy_heading',$('policyHeadingSetting').checked?'1':'0');localStorage.removeItem('milo_fast_provisional_print');localStorage.setItem('milo_receipt_extra',$('receiptExtra').value.slice(0,500));localStorage.setItem('milo_receipt_logo_size',String(Math.min(220,Math.max(30,Number($('receiptLogoSize').value)||70))));localStorage.setItem('milo_receipt_qr_size',String(Math.min(320,Math.max(80,Number($('receiptQrSize').value)||120))));localStorage.setItem('milo_print_mode',$('printerMode').value);localStorage.setItem('milo_bridge_token',$('bridgeToken').value.trim());localStorage.removeItem('milo_direct_mode');localStorage.setItem('milo_receipt_font',$('receiptFont').value);localStorage.setItem('milo_receipt_align',$('receiptAlign').value);localStorage.setItem('milo_receipt_offset',String(Math.min(8,Math.max(-8,Number($('receiptOffset').value)||0))));localStorage.setItem('milo_drawer_mode',$('drawerMode').value);localStorage.setItem('milo_print_show_qr',$('showQrSetting').checked?'1':'0');localStorage.setItem('milo_receipt_margin',String(Math.min(8,Math.max(0,Number($('receiptMargin').value)||0))));localStorage.setItem('milo_kitchen_print',$('kitchenPrintSetting').checked?'1':'0');localStorage.setItem('milo_shift_print',$('shiftPrintSetting').checked?'1':'0');closeModal();toast('تم حفظ إعدادات الطباعة والفاتورة')}}])
 }
 
-async function renderDevicesPage(){hdr('الكاشيرات والأجهزة','معلومات هذا الجهاز والمتابعة من السجل المركزي',btn('تحديث حالة الجهاز','device-heartbeat','','secondary'));setContent(`<div class="metrics"><div class="metric"><span>اسم الكاشير</span><b style="font-size:16px">${esc(state.terminalName)}</b></div><div class="metric"><span>كود الجهاز</span><b style="font-size:11px;overflow-wrap:anywhere">${esc(terminalId())}</b></div><div class="metric"><span>الربط</span><b style="font-size:14px">${state.networkOK?'متصل':'بحاجة تحقق'}</b></div></div><div class="panel"><h2>تسمية هذا الكاشير</h2>${info('اسم كل جهاز يُحفظ في متصفحه، ويتم إرساله مع الفاتورة وسجل نشاط الجهاز عند الاتصال. الخادم الحالي لا يتيح صفحة قراءة مركزية لجميع الأجهزة.')}<div class="toolbar">${btn('تعديل اسم الكاشير','edit-device','','primary')} ${btn('إرسال حالة الاتصال','device-heartbeat','','secondary')}</div></div>`)}
+// MILO | read-only central device catalog and per-device invoice reports.
+// No invoices, products, Accounts rows or sessions are modified by this page.
+let miloDeviceAdminSession=null;
+let miloDeviceRows=[];
+let miloDeviceDetails=null;
+let miloSelectedDevice='';
+let miloDevicePeriod={from:new Date(Date.now()-29*86400000+3*3600000).toISOString().slice(0,10),to:isoDay()};
+let miloDeviceRequestSeq=0;
+const miloDeviceDate=x=>{if(!x)return '—';const t=new Date(x);return Number.isFinite(t.getTime())?t.toLocaleString('ar-SA',{timeZone:'Asia/Riyadh',dateStyle:'medium',timeStyle:'short'}):String(x).slice(0,40)};
+function miloDevicePeriodValid(from,to){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)throw Error('اختر تاريخ بداية ونهاية صحيحين');
+ const t0=Date.parse(from+'T00:00:00Z'),t1=Date.parse(to+'T00:00:00Z');
+ if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1-t0>366*86400000)throw Error('الحد الأعلى للتقرير سنة واحدة');
+ return {from,to};
+}
+async function miloDeviceRawRequest(payload){
+ if(!navigator.onLine)throw Error('تقارير الأجهزة تحتاج اتصالًا بالإنترنت');
+ const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),45000);
+ try{
+  const r=await fetch(MILO_DEVICE_ADMIN_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},redirect:'follow',credentials:'omit',body:JSON.stringify(payload),signal:ctrl.signal});
+  if(!r.ok)throw Error('تعذر الاتصال بخدمة تقارير الأجهزة (HTTP '+r.status+')');
+  let out;try{out=await r.json()}catch(_){throw Error('الخادم لم يرجع بيانات التقارير بشكل صحيح');}
+  if(!out||out.ok!==true){const e=Error(out?.message||'تعذر قراءة تقارير الأجهزة');e.code=out?.error||'';throw e;}
+  return out;
+ }catch(e){
+  if(e.name==='AbortError')throw Error('انتهت مهلة قراءة تقارير الأجهزة. حاول مجددًا');
+  if(e instanceof TypeError)throw Error('تعذر الوصول إلى خدمة أجهزة ميلو. تحقق من نشر Apps Script');
+  throw e;
+ }finally{clearTimeout(timeout)}
+}
+async function miloDeviceAuth(){
+ if(!state.auth||!state.account)throw Error('سجل الدخول إلى الكاشير أولًا');
+ const user=state.auth.username,store=String(state.account.storeCode||'');
+ if(miloDeviceAdminSession?.username===user&&miloDeviceAdminSession?.storeCode===store&&miloDeviceAdminSession.token)return miloDeviceAdminSession.token;
+ const response=await miloDeviceRawRequest({action:'adminLogin',username:user,password:state.auth.password});
+ if(!state.auth||state.auth.username!==user||state.account?.storeCode!==store)throw Error('تغير الحساب أثناء تحميل الأجهزة');
+ if(String(response.storeCode||'')!==store)throw Error('قاعدة بيانات الأجهزة لا تطابق حساب المتجر. لم يتم عرض بيانات أي متجر آخر.');
+ miloDeviceAdminSession={username:user,storeCode:store,token:String(response.token||'')};
+ if(!miloDeviceAdminSession.token)throw Error('خدمة تقارير الأجهزة لم تصدر جلسة دخول');
+ return miloDeviceAdminSession.token;
+}
+async function miloDeviceApi(action,data={}){
+ let token=await miloDeviceAuth();
+ try{return await miloDeviceRawRequest({action,token,...data});}
+ catch(e){
+  if(e.code!=='admin_unauthorized')throw e;
+  miloDeviceAdminSession=null;
+  token=await miloDeviceAuth();
+  return miloDeviceRawRequest({action,token,...data});
+ }
+}
+function miloDeviceSelfPanel(message=''){
+ return `<section class="panel milo-device-own"><div class="milo-device-own-head"><div><span class="milo-device-kicker">هذا الجهاز</span><h2>${esc(state.terminalName)}</h2></div><span class="milo-device-own-badge">الكاشير الحالي</span></div><div class="milo-device-own-meta"><span>معرّف الجهاز</span><code>${esc(terminalId())}</code></div><div class="toolbar">${btn('تغيير اسم الجهاز','edit-device','','outline')}${btn('تسجيل نشاط الجهاز','device-heartbeat','','secondary')}</div>${message?`<p class="milo-device-note">${esc(message)}</p>`:''}</section>`;
+}
+function miloDeviceCard(device){
+ const current=device.deviceCode===terminalId();
+ const labels=[device.deviceName||'جهاز بدون اسم',device.username||'',device.deviceCode||''];
+ return `<article class="milo-device-card" data-device-search="${esc(labels.join(' ').toLowerCase())}"><div class="milo-device-card-main"><div class="milo-device-glyph" aria-hidden="true">${MiloIcons.svg('monitor')}</div><div class="milo-device-card-heading"><h3>${esc(device.deviceName||'جهاز بدون اسم')}${current?' <span class="milo-device-current">هذا الجهاز</span>':''}</h3><div class="milo-device-code">${esc(device.deviceCode||'')}</div></div></div><div class="milo-device-card-details"><div><span>آخر نشاط مسجل</span><strong>${esc(miloDeviceDate(device.lastSeen))}</strong></div><div><span>المستخدم</span><strong>${esc(device.username||'غير محدد')}</strong></div><div><span>حالة المتابعة</span><strong>${esc(device.connectionLabel||'آخر نشاط مسجل')}</strong></div></div><div class="milo-device-card-actions">${btn('فتح تقرير الجهاز','device-report',device.deviceCode,'primary')}</div></article>`;
+}
+function miloDeviceCardsHtml(){
+ const remote=miloDeviceRows.filter(d=>d&&d.deviceCode);
+ const missing=!remote.some(d=>d.deviceCode===terminalId());
+ return `<section class="milo-device-summary"><div class="milo-device-summary-icon">${MiloIcons.svg('monitor')}</div><div><span>الأجهزة المسجلة على حساب المتجر</span><strong>${remote.length}</strong><small>تظهر الأجهزة التي سبق لها تسجيل نشاط أو فواتير على هذا الحساب</small></div></section>
+ <section class="panel milo-device-list-panel"><div class="milo-device-section-head"><div><h2>قائمة الأجهزة</h2><p>اختر أي جهاز لعرض فواتيره ومبيعاته حسب الفترة.</p></div><label class="milo-device-search-label"><span>بحث عن جهاز</span><input class="input" id="miloDeviceSearch" type="search" placeholder="اسم الجهاز أو كوده أو المستخدم" autocomplete="off"></label></div>
+ <div id="miloDeviceGrid" class="milo-device-grid">${remote.map(miloDeviceCard).join('')||'<div class="milo-device-empty">لا توجد أجهزة مسجلة بعد. استخدم الكاشير وسجّل نشاط الجهاز لإظهاره.</div>'}</div>
+ ${missing?'<p class="milo-device-note">الجهاز الحالي لم يظهر بعد في السجل المركزي؛ يمكنك تسجيل نشاطه ثم التحديث.</p>':''}</section>`;
+}
+function miloDeviceFilter(){
+ const q=($('miloDeviceSearch')?.value||'').trim().toLowerCase();
+ document.querySelectorAll('[data-device-search]').forEach(el=>{el.hidden=!!q&&!el.dataset.deviceSearch.includes(q)});
+}
+async function renderDevicesPage(){
+ miloSelectedDevice='';miloDeviceDetails=null;
+ hdr('أجهزة الحساب','إدارة متابعة أجهزة المتجر وتقارير كل جهاز',btn('تحديث قائمة الأجهزة','device-refresh','','secondary'));
+ setContent(`<div class="milo-device-page">${miloDeviceSelfPanel()}<section class="panel milo-device-loading"><div class="milo-device-spinner" aria-hidden="true"></div>جاري تحميل أجهزة حسابك…</section></div>`);
+ const seq=++miloDeviceRequestSeq;
+ try{
+  const response=await miloDeviceApi('adminDevices');
+  if(seq!==miloDeviceRequestSeq||state.page!=='devices'||miloSelectedDevice)return;
+  miloDeviceRows=Array.isArray(response.devices)?response.devices:[];
+  setContent(`<div class="milo-device-page">${miloDeviceSelfPanel()}${miloDeviceCardsHtml()}</div>`);
+  $('miloDeviceSearch')?.addEventListener('input',miloDeviceFilter);
+ }catch(e){
+  if(seq!==miloDeviceRequestSeq||state.page!=='devices')return;
+  setContent(`<div class="milo-device-page">${miloDeviceSelfPanel()}<section class="panel">${info('تعذر تحميل أجهزة الحساب: '+e.message,'danger')}<div class="toolbar">${btn('إعادة المحاولة','device-refresh','','primary')}</div></section></div>`);
+ }
+}
+function miloDeviceReportMarkup(data){
+ const t=data.totals||{},d=data.device||{},days=data.daily||[],cashiers=data.cashiers||[],invoices=data.recentInvoices||[],shifts=data.shifts||[];
+ const barMax=Math.max(1,...days.map(x=>n(x.sales)));
+ const metric=(label,val)=>`<div class="metric"><span>${esc(label)}</span><b>${esc(val)}</b></div>`;
+ const dayRows=days.map(x=>`<tr><td>${esc(x.day)}</td><td>${n(x.invoices)}</td><td>${amt(x.sales)}</td><td>${amt(x.cash)}</td><td>${amt(x.card)}</td></tr>`).join('');
+ const invoiceRows=invoices.map(x=>`<tr><td>${esc(x.invoiceId)}</td><td>${esc(miloDeviceDate(x.date))}</td><td>${esc(x.cashier||'—')}</td><td>${esc(x.customer||'—')}</td><td>${amt(x.total)}</td><td>${amt(x.cash)}</td><td>${amt(x.card)}</td></tr>`).join('');
+ const shiftRows=shifts.map(x=>`<tr><td>${esc(x.shiftId)}</td><td>${esc(x.cashier||'—')}</td><td>${esc(miloDeviceDate(x.openedAt))}</td><td>${esc(miloDeviceDate(x.closedAt))}</td><td>${n(x.invoiceCount)}</td><td>${amt(x.totalSales)}</td></tr>`).join('');
+ return `<div class="milo-device-report"><div class="milo-device-report-intro"><div><div class="milo-device-kicker">تقرير الجهاز</div><h2>${esc(d.deviceName||'جهاز بدون اسم')}</h2><p>${esc(d.deviceCode||'')} · من ${esc(data.period?.from||miloDevicePeriod.from)} إلى ${esc(data.period?.to||miloDevicePeriod.to)}</p></div><div class="toolbar">${btn('العودة إلى الأجهزة','device-back','','outline')}${btn('تصدير الفواتير CSV','device-export','','secondary')}</div></div>
+ <div class="milo-device-period panel"><label>من تاريخ<input class="input" id="miloDeviceFrom" type="date" value="${esc(miloDevicePeriod.from)}"></label><label>إلى تاريخ<input class="input" id="miloDeviceTo" type="date" value="${esc(miloDevicePeriod.to)}"></label>${btn('عرض الفترة','device-period','','primary')}${btn('تحديث التقرير','device-reload','','secondary')}</div>
+ <div class="metrics milo-device-report-metrics">${metric('إجمالي المبيعات',amt(t.sales))}${metric('عدد الفواتير',String(n(t.invoices)))}${metric('مبيعات نقدية',amt(t.cash))}${metric('مبيعات الشبكة',amt(t.card))}${metric('ضريبة القيمة المضافة',amt(t.vat))}${metric('إجمالي الخصومات',amt(t.discount))}${metric('متوسط الفاتورة',amt(t.avgInvoice))}</div>
+ <div class="milo-device-report-columns"><section class="panel"><h2>حركة المبيعات اليومية</h2>${days.length?`<div class="milo-device-bars">${days.slice(-35).map(x=>`<div class="milo-device-bar-col" title="${esc(x.day)} · ${amt(x.sales)}"><div class="milo-device-bar" style="height:${Math.max(3,Math.round(n(x.sales)/barMax*145))}px"></div><span>${esc(x.day.slice(5))}</span></div>`).join('')}</div>`:'<p class="milo-device-empty">لا توجد مبيعات في الفترة المحددة.</p>'}</section><section class="panel"><h2>المبيعات حسب الموظف</h2>${cashiers.length?cashiers.slice(0,12).map(x=>`<div class="milo-device-cashier"><strong>${esc(x.cashier)}</strong><span>${n(x.invoices)} فاتورة</span><b>${amt(x.sales)}</b></div>`).join(''):'<p class="milo-device-empty">لا توجد فواتير لهذا الجهاز في الفترة المحددة.</p>'}</section></div>
+ <section class="panel"><h2>تفاصيل المبيعات اليومية</h2>${tabular(['التاريخ','الفواتير','الإجمالي','النقد','الشبكة'],dayRows,'لا توجد سجلات خلال هذه الفترة')}</section>
+ <section class="panel"><h2>الفواتير الأخيرة للجهاز <small>(${n(data.records?.invoices)} فاتورة في الفترة، تعرض أحدث 100)</small></h2>${tabular(['رقم الفاتورة','التاريخ','الكاشير','العميل','الإجمالي','النقد','الشبكة'],invoiceRows,'لا توجد فواتير محفوظة لهذا الجهاز')}</section>
+ <section class="panel"><h2>الورديات الأخيرة <small>(${n(data.records?.shifts)} وردية في الفترة، تعرض أحدث 100)</small></h2>${tabular(['رقم الوردية','الكاشير','الفتح','الإغلاق','الفواتير','المبيعات'],shiftRows,'لا توجد ورديات مسجلة لهذا الجهاز')}</section>
+ <p class="milo-device-report-note">تعتمد الإجماليات على فواتير هذا الجهاز المعتمدة فقط. التقارير اليومية لا تضاف للمبيعات مرة ثانية. هذا التقرير للعرض ولا يغيّر بيانات الكاشير.</p></div>`;
+}
+async function miloOpenDeviceReport(id){
+ if(!id||!miloDeviceRows.some(d=>d.deviceCode===id))throw Error('الجهاز غير موجود ضمن أجهزة الحساب');
+ miloDevicePeriodValid(miloDevicePeriod.from,miloDevicePeriod.to);
+ miloSelectedDevice=id;
+ hdr('تقرير جهاز','تفاصيل المبيعات والفواتير الخاصة بالجهاز المحدد',btn('العودة للأجهزة','device-back','','outline'));
+ setContent(`<div class="milo-device-page"><section class="panel milo-device-loading"><div class="milo-device-spinner" aria-hidden="true"></div>جاري إعداد التقرير…</section></div>`);
+ const seq=++miloDeviceRequestSeq;
+ try{
+  const r=await miloDeviceApi('adminDeviceReport',{deviceCode:id,from:miloDevicePeriod.from,to:miloDevicePeriod.to});
+  if(seq!==miloDeviceRequestSeq||state.page!=='devices'||miloSelectedDevice!==id)return;
+  miloDeviceDetails=r;
+  setContent(`<div class="milo-device-page">${miloDeviceReportMarkup(r)}</div>`);
+ }catch(e){
+  if(seq!==miloDeviceRequestSeq||state.page!=='devices'||miloSelectedDevice!==id)return;
+  miloDeviceDetails=null;
+  setContent(`<div class="milo-device-page"><section class="panel">${info('تعذر تحميل تقرير الجهاز: '+e.message,'danger')}<div class="toolbar">${btn('العودة للأجهزة','device-back','','outline')}${btn('إعادة المحاولة','device-reload','','primary')}</div></section></div>`);
+ }
+}
+function miloDeviceApplyPeriod(){
+ const from=$('miloDeviceFrom')?.value||'',to=$('miloDeviceTo')?.value||'';
+ miloDevicePeriod=miloDevicePeriodValid(from,to);
+ return miloOpenDeviceReport(miloSelectedDevice);
+}
+function miloDeviceExport(){
+ if(!miloDeviceDetails?.device||!miloSelectedDevice)throw Error('افتح تقرير الجهاز أولًا');
+ const cols=['invoiceId','date','cashier','customer','total','cash','card','vat','discount'];
+ const invoices=miloDeviceDetails.recentInvoices||[];
+ const csv='\ufeff'+[cols.join(','),...invoices.map(row=>cols.map(k=>'"'+String(row[k]??'').replace(/"/g,'""')+'"').join(','))].join('\r\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='MILO-DEVICE-'+miloSelectedDevice.replace(/[^A-Za-z0-9-]/g,'')+'-'+miloDevicePeriod.from+'-'+miloDevicePeriod.to+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+ toast('تم تصدير الفواتير المعروضة في التقرير (حتى 100 فاتورة)');
+}
 function deviceEditor(){showModal('بيانات الكاشير',`<form id="deviceForm" class="form">${field('اسم الجهاز','terminalName',state.terminalName,'text','required maxlength="80"')}<p class="wide small-note">المعرّف: ${esc(terminalId())}</p></form>`,[{label:'إلغاء',onClick:closeModal},{label:'حفظ',style:'primary',onClick:()=>{const f=$('deviceForm');if(!f.reportValidity())return;state.terminalName=formGet(f).terminalName.trim();localStorage.setItem('milo_terminal_name',state.terminalName);closeModal();void deviceEvent('heartbeat');showPage(state.page);toast('تم تحديث اسم الكاشير')}}])}
 async function renderSupportPage(){hdr('الدعم الفني','إرسال بلاغ مسجل في قاعدة بيانات المتجر');setContent(`<div class="panel"><div class="columns2"><form id="supportForm" class="form" style="display:grid;grid-template-columns:1fr">${field('وصف المشكلة','description','','text','required minlength="10" maxlength="1200"')}${field('ملخص رسالة الخطأ (اختياري)','errorSummary','')}<button class="btn primary" data-commit type="submit">إرسال البلاغ إلى الدعم</button></form><div class="notice">يُحفظ البلاغ في سجل الدعم الفني مع بيانات الجهاز والمتجر. تسجيل البلاغ لا يعني الرد تلقائيًا؛ تتم متابعته عبر إدارة النظام.</div></div></div>`)}
 async function sendTicket(){const f=$('supportForm');if(!f.reportValidity())return;const v=formGet(f);await api('submitSupportTicket',{ticket:{ticketId:uid(),storeCode:state.account.storeCode,deviceCode:terminalId(),deviceName:state.terminalName,occurredAt:dateTime(),description:v.description,errorSummary:v.errorSummary||''}});f.reset();toast('تم تسجيل البلاغ في قاعدة البيانات')}
@@ -982,6 +1119,12 @@ async function onAction(action,id,button){switch(action){
  case 'print-closed-shift':return miloReprintClosedShift(id); case 'open-shift':return miloShiftPerform('open');case 'close-shift':if(miloShiftBusy)return;return confirmModal('إغلاق الوردية','سيحفظ النظام المبلغ الفعلي وملخص المبيعات في السجل.',()=>miloShiftPerform('close'));
  case 'new-manual':return manualEditor();case 'print-manual':{const order=state.manualOrders.find(x=>x.id===id);if(order)return printReceipt(order,false,true);return}
   case 'remove-receipt-logo':localStorage.removeItem('milo_receipt_logo');return toast('تم إزالة شعار الفاتورة');case 'sound-settings':return soundSettingsEditor();case 'test-sound-product':{const old=localStorage.getItem('milo_product_sound');localStorage.setItem('milo_product_sound','1');playMiloSound('product');if(old===null)localStorage.removeItem('milo_product_sound');else localStorage.setItem('milo_product_sound',old);return;}case 'test-sound-error':{const old=localStorage.getItem('milo_error_sound');localStorage.setItem('milo_error_sound','1');playMiloSound('error');if(old===null)localStorage.removeItem('milo_error_sound');else localStorage.setItem('milo_error_sound',old);return;}case 'edit-settings':return settingsEditor();case 'test-print':return printReceipt({id:'TEST-PRINT',date:dateTime(),cashier:state.account?.username||'تجربة',items:[{name:'اختبار طباعة كاشير ميلو',qty:1,price:0,total:0}],notes:'تجربة طباعة فقط — ليست فاتورة بيع'},false,true);case 'print-settings':return printerEditor();case 'edit-device':return deviceEditor();case 'reload-settings':return fetchSettings();
+ case 'device-refresh':return renderDevicesPage();
+ case 'device-report':return miloOpenDeviceReport(id);
+ case 'device-back':return renderDevicesPage();
+ case 'device-period':return miloDeviceApplyPeriod();
+ case 'device-reload':return miloOpenDeviceReport(miloSelectedDevice);
+ case 'device-export':return miloDeviceExport();
  case 'device-heartbeat':await deviceEvent('heartbeat');return toast('تم إرسال نبضة الاتصال إن كانت صلاحيات الخادم تسمح');case 'test-ping':await api('ping');return toast('تم التحقق من الاتصال بالخادم');
  case 'loyalty-check-sale':return loyaltySaleBalance();case 'loyalty-redeem-sale':return loyaltySaleRedeem();case 'loyalty-lookup':return loyaltySearch();case 'loyalty-save-settings':return loyaltySaveSettings();
  case 'purge-invoices':return miloPurgeDialog('invoices');case 'purge-reports':return miloPurgeDialog('reports');case 'purge-products':return miloPurgeDialog('products');
