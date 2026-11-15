@@ -1,5 +1,5 @@
  'use strict';
-const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycbykLLjtPih4c0JVw1MAk3mQ1BVG-s2TzyUcizmEC5UprlUxOVKAvz_80qLvi0NAiXQE/exec';
+const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycbxm8maSsGp6-UTWgioq8YVui0bEgtSeZmK52OmwM81ZHFshP6dN4pD3kOCKi9mOeinV/exec';
 const qs=new URLSearchParams(location.search),storeCode=qs.get('store')||'',key=qs.get('key')||'';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>Number(n||0).toFixed(2)+' ر.س';
 const cartLink='customer-cart.html'+location.search,shopLink='customer-order.html'+location.search;
