@@ -56,7 +56,7 @@ const printPrefs=()=>({paper:localStorage.getItem('milo_paper')||state.paper||'8
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 function renderBrowserInstallNotice(){/* Native browser install UI only. */} function enforceBrowserHardening(){window.addEventListener('contextmenu',e=>e.preventDefault());document.addEventListener('keydown',e=>{const k=(e.key||'').toLowerCase();if(k==='f12'||(e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(k))||(e.ctrlKey&&['u','s'].includes(k))){e.preventDefault();e.stopPropagation();toast('هذه العملية غير متاحة داخل الكاشير',true);return false;}},true);let hits=0;setInterval(()=>{const opened=(window.outerWidth-window.innerWidth>160)||(window.outerHeight-window.innerHeight>160);if(opened){hits++;if(hits>=2){document.body.classList.add('devtools-warning');toast('يرجى تشغيل كاشير ميلو في وضع الاستخدام فقط',true);} }else{hits=0;document.body.classList.remove('devtools-warning');}},1400);}
 
-const menus=[['sale','نقطة البيع','cart'],['products','المنتجات','package'],['labels','ملصقات الباركود','tag'],['invoices','الفواتير','receipt'],['reports','التقارير','chart'],['smart','ميلو الذكي','shield'],['tools','الأدوات','settings'],['inventory','المخزون','boxes'],['customers','العملاء','users'],['loyalty','برنامج الولاء','gift'],['suppliers','الموردون','truck'],['purchases','المشتريات','shopping-bag'],['purchaseItems','بنود المشتريات','list'],['expenses','المصروفات','wallet'],['vouchers','السندات','file-text'],['returns','المرتجعات','undo'],['promotions','العروض','tag'],['employees','الموظفون','user-cog'],['shifts','الورديات','clock'],['onlineOrders','طلبات الزبائن','clipboard'],['kioskOrders','طلبات الخدمة الذاتية','monitor'],['manual','طلبات يدوية','clipboard'],['devices','الأجهزة','monitor'],['support','الدعم','headphones'],['settings','الإعدادات','settings'],['account','حسابي','user']];
+const menus=[['sale','نقطة البيع','cart'],['products','المنتجات','package'],['labels','ملصقات الباركود','tag'],['invoices','الفواتير','receipt'],['reports','التقارير','chart'],['insights','مركز التقارير','chart'],['smart','ميلو الذكي','shield'],['tools','الأدوات','settings'],['inventory','المخزون','boxes'],['customers','العملاء','users'],['loyalty','برنامج الولاء','gift'],['suppliers','الموردون','truck'],['purchases','المشتريات','shopping-bag'],['purchaseItems','بنود المشتريات','list'],['expenses','المصروفات','wallet'],['vouchers','السندات','file-text'],['returns','المرتجعات','undo'],['promotions','العروض','tag'],['employees','الموظفون','user-cog'],['shifts','الورديات','clock'],['onlineOrders','طلبات الزبائن','clipboard'],['kioskOrders','طلبات الخدمة الذاتية','monitor'],['manual','طلبات يدوية','clipboard'],['devices','الأجهزة','monitor'],['support','الدعم','headphones'],['settings','الإعدادات','settings'],['account','حسابي','user']];
 const titles=Object.fromEntries(menus.map(x=>[x[0],x[1]]));
 let handler=null,toastTimer=null,pollTimer=null,accountCheckTimer=null,accountCheckInFlight=false,accountCheckLastAt=0;
 const ACCOUNT_CHECK_EVERY_MS=60000;
@@ -286,7 +286,7 @@ async function authenticate(username,password){const resp=await request({action:
 function logout(){miloDeviceAdminSession=null;miloDeviceRows=[];miloDeviceDetails=null;miloSelectedDevice='';miloDeviceRequestSeq++;closeAccountMenu();if(state.auth)void deviceEvent('close');clearInterval(pollTimer);clearInterval(accountCheckTimer);state.auth=null;state.account=null;state.products=[];state.reports=[];state.cart=[];state.held=[];state.pendingInvoice=null;$('app').classList.add('hidden');$('loginScreen').classList.remove('hidden');$('loginPass').value='';$('loginError').textContent='';connection(false,'غير مسجل');closeModal()}
 async function deviceEvent(type){if(!state.auth)return;try{await api('saveDeviceEvents',{events:[{storeCode:state.account.storeCode,eventId:uid(),deviceCode:deviceCode(),deviceName:state.terminalName,eventType:type,occurredAt:dateTime(),details:'MILO browser'}]})}catch(_){}}
 async function refreshCore(){const settled=await Promise.allSettled([api('products'),api('getStoreSettings'),api('customers'),api('suppliers'),api('shifts')]);const [pr,st,cu,su,sh]=settled;if(pr.status==='fulfilled'){state.products=pr.value.products||[];state.productsRevision=pr.value.productsRevision||'';}if(st.status==='fulfilled')state.settings={...state.settings,...st.value.settings};if(cu.status==='fulfilled')state.customers=cu.value.customers||[];if(su.status==='fulfilled')state.suppliers=su.value.suppliers||[];if(sh.status==='fulfilled')state.shifts=sh.value.shifts||[];state.activeShift=state.shifts.find(x=>!x.closed_at&&String(x.terminal)===terminalId())||null;if(pr.status==='rejected')toast('تعذّر تحديث المنتجات؛ ستبقى البيانات المحفوظة على الجهاز. '+pr.reason.message,true);await cacheCoreSnapshots()}
-async function showPage(page){if(!titles[page])page='sale';if(page!=='devices')miloDeviceRequestSeq++;state.page=page;document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));window.MiloLoading?.show('content',page);try{const lookup={sale:renderSale,products:renderProductsPage,labels:renderLabelsPage,invoices:renderInvoicesPage,reports:renderReportsPage,smart:renderSmartSuite,tools:renderMiloToolsPage,inventory:renderInventoryPage,customers:()=>renderEntityPage('customers'),loyalty:renderLoyaltyPage,suppliers:()=>renderEntityPage('suppliers'),purchases:()=>renderEntityPage('purchases'),purchaseItems:()=>renderEntityPage('purchaseItems'),expenses:()=>renderEntityPage('expenses'),vouchers:()=>renderEntityPage('vouchers'),returns:()=>renderEntityPage('returns'),promotions:()=>renderEntityPage('promotions'),employees:()=>renderEntityPage('employees'),shifts:renderShiftsPage,manual:renderManualPage,onlineOrders:renderOnlineOrdersPage,kioskOrders:renderKioskOrdersPage,devices:renderDevicesPage,support:renderSupportPage,settings:renderSettingsPage,account:renderAccountPage};await lookup[page]();renderBrowserInstallNotice()}catch(e){hdr(titles[page]);$('content').innerHTML=info(e.message,'danger');toast(e.message,true)}}
+async function showPage(page){if(!titles[page])page='sale';if(page!=='devices')miloDeviceRequestSeq++;state.page=page;document.querySelectorAll('[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));window.MiloLoading?.show('content',page);try{const lookup={sale:renderSale,products:renderProductsPage,labels:renderLabelsPage,invoices:renderInvoicesPage,reports:renderReportsPage,insights:()=>window.MiloReportsCenter.render({api,state,hdr,setContent,productStats:reportProductStats}),smart:renderSmartSuite,tools:renderMiloToolsPage,inventory:renderInventoryPage,customers:()=>renderEntityPage('customers'),loyalty:renderLoyaltyPage,suppliers:()=>renderEntityPage('suppliers'),purchases:()=>renderEntityPage('purchases'),purchaseItems:()=>renderEntityPage('purchaseItems'),expenses:()=>renderEntityPage('expenses'),vouchers:()=>renderEntityPage('vouchers'),returns:()=>renderEntityPage('returns'),promotions:()=>renderEntityPage('promotions'),employees:()=>renderEntityPage('employees'),shifts:renderShiftsPage,manual:renderManualPage,onlineOrders:renderOnlineOrdersPage,kioskOrders:renderKioskOrdersPage,devices:renderDevicesPage,support:renderSupportPage,settings:renderSettingsPage,account:renderAccountPage};await lookup[page]();renderBrowserInstallNotice()}catch(e){hdr(titles[page]);$('content').innerHTML=info(e.message,'danger');toast(e.message,true)}}
 function setContent(html){$('content').innerHTML=html}
 function optionsOf(p){try{const v=JSON.parse(p.restaurantOptionsJson||'{}');return {sizes:Array.isArray(v.sizes)?v.sizes:[],extras:Array.isArray(v.extras)?v.extras:[]}}catch{return {sizes:[],extras:[]}}}
 function categoryNames(){return ['الكل',...new Set(state.products.map(p=>p.category).filter(Boolean))]}
@@ -577,10 +577,88 @@ function productListing(){const target=$('productListing');if(!target)return;
 let draftSizes=[],draftExtras=[];
 function optionInputs(kind){const arr=kind==='sizes'?draftSizes:draftExtras;return arr.map((o,i)=>`<div class="option-row"><input class="input" placeholder="${kind==='sizes'?'اسم الحجم':'اسم الإضافة'}" data-opt="${kind}" data-idx="${i}" data-key="name" value="${esc(o.name)}"><input class="input" type="number" min="0" step="0.01" data-opt="${kind}" data-idx="${i}" data-key="price" value="${n(o.price)}"><button type="button" class="btn danger small" data-action="remove-option" data-id="${kind}:${i}">حذف</button></div>`).join('')||'<p class="small-note">لا توجد خيارات لهذا المنتج.</p>'}
 function updateOptionsFields(){if($('sizeRows'))$('sizeRows').innerHTML=optionInputs('sizes');if($('extraRows'))$('extraRows').innerHTML=optionInputs('extras')}
-function productEditor(p){const opt=p?optionsOf(p):{sizes:[],extras:[]};draftSizes=opt.sizes.map(x=>({...x}));draftExtras=opt.extras.map(x=>({...x}));const cat=categoryNames().filter(x=>x!=='الكل');const body=`<form id="productForm" class="form">${field('اسم المنتج','name',p?.name||'','text','required maxlength="500"')}${field('الباركود','barcode',p?.barcode||'','text',p?'required readonly':'required maxlength="120"')}${field('التصنيف (يمكن كتابة اسم جديد)','category',p?.category||'عام','text','list="productCategories" required')}<datalist id="productCategories">${cat.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>${field('سعر التجزئة','price',p?.price??'0','number','min="0" step="0.01" required')}${field('سعر الجملة','wholesalePrice',p?.wholesalePrice??'0','number','min="0" step="0.01" required')}${field('سعر التكلفة','costPrice',p?.costPrice??'0','number','min="0" step="0.01" required')}${field('المخزون المتاح','stock',p?.stock??'0','number','min="0" step="0.001" required')}${field('حد تنبيه المخزون','minStock',p?.minStock??'0','number','min="0" step="0.001" required')}${field('الوحدة','unit',p?.unit||'حبة')}<div class="milo-photo-section"><span class="milo-photo-title">صورة المنتج</span><div class="milo-photo-layout"><div id="miloProductPhotoPreview" class="milo-photo-preview">${/^https:\/\//i.test(p?.imageUrl||'')?`<img src="${esc(p.imageUrl)}" alt="صورة المنتج">`:'<span>▦</span>'}</div><div class="milo-photo-details"><label for="miloProductAlbum" class="btn secondary milo-album-label">اختيار صورة من الألبوم</label><input id="miloProductAlbum" type="file" accept="image/jpeg,image/png,image/webp" class="milo-photo-file"><p id="miloProductPhotoHint" class="small-note">PNG أو JPG أو WebP • سيتم ضغط الصورة قبل رفعها إلى مساحة صور ميلو على Google Drive</p><button type="button" class="btn outline small" id="miloClearPhoto">إزالة الصورة</button></div></div>${field('أو رابط صورة HTTPS','imageUrl',p?.imageUrl||'','url','placeholder="https://..."')}</div>${textArea('وصف الصنف','description',p?.description||'')}${checkbox('مخزون غير محدود','unlimitedStock',p?.unlimitedStock)}<div class="form-section"><h3>الأحجام</h3><p class="form-help">يمكنك إضافة عدة أحجام وأسعار مستقلة. مثال: صغير ووسط وكبير.</p><div id="sizeRows"></div><button type="button" class="btn secondary small" data-action="add-option" data-id="sizes">+ إضافة حجم</button></div><div class="form-section"><h3>الإضافات</h3><p class="form-help">الإضافة ذات السعر صفر تكون مجانية.</p><div id="extraRows"></div><button type="button" class="btn secondary small" data-action="add-option" data-id="extras">+ إضافة اختيار</button></div></form>`;
+/* MILO product barcodes: internal EAN-13 auto-generation or a merchant-provided barcode. */
+function miloEAN13CheckDigit(firstTwelve){
+ if(!/^\d{12}$/.test(String(firstTwelve)))throw Error('بيانات الباركود غير صالحة');
+ let sum=0;for(let i=0;i<12;i++)sum+=Number(firstTwelve[i])*(i%2===0?1:3);
+ return String((10-sum%10)%10);
+}
+function miloGenerateUniqueBarcode(){
+ // Do not use Math.random for merchandise identifiers. The secure browser API is available on HTTPS.
+ if(typeof crypto==='undefined'||typeof crypto.getRandomValues!=='function')return '';
+ for(let attempt=0;attempt<60;attempt++){
+  const bytes=new Uint8Array(10);crypto.getRandomValues(bytes);
+  const firstTwelve='20'+Array.from(bytes,b=>String(b%10)).join('');
+  const code=firstTwelve+miloEAN13CheckDigit(firstTwelve);
+  if(!state.products.some(p=>String(p.barcode).trim()===code))return code;
+ }
+ return '';
+}
+function miloBarcodeCard(p,generated){
+ const editing=!!p;const autoReady=!editing&&!!generated;
+ return `<section class="milo-barcode-card wide" aria-labelledby="miloBarcodeHeading">
+   <div class="milo-barcode-heading"><div class="milo-barcode-emblem" aria-hidden="true">${MiloIcons.svg('barcode')}</div><div><h3 id="miloBarcodeHeading">رقم الباركود</h3><p>${editing?'باركود هذا المنتج محفوظ ويستخدم في الفواتير.':'اختر طريقة إنشاء رمز المنتج لتسجيله في الكاشير.'}</p></div><span class="milo-barcode-head-badge">${editing?'ثابت':'EAN-13 داخلي'}</span></div>
+   ${editing?'<div class="milo-barcode-lock-msg">للحفاظ على ربط المبيعات والفواتير القديمة، لا يمكن تغيير باركود المنتج بعد الحفظ.</div>':`<div class="milo-barcode-mode" role="group" aria-label="طريقة إدخال الباركود"><button class="milo-barcode-mode-btn ${autoReady?'active':''}" id="miloBarcodeAuto" type="button" aria-pressed="${autoReady}">${MiloIcons.svg('plus')}<span><b>إنشاء تلقائي</b><small>رقم فريد عشوائي</small></span></button><button class="milo-barcode-mode-btn ${autoReady?'':'active'}" id="miloBarcodeManual" type="button" aria-pressed="${!autoReady}">${MiloIcons.svg('pencil')}<span><b>إدخال يدوي</b><small>رقم من اختيارك</small></span></button></div>`}
+   <div class="milo-barcode-value-row"><label class="milo-barcode-field" for="miloBarcodeInput">الباركود<input id="miloBarcodeInput" name="barcode" class="input milo-barcode-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" inputmode="text" maxlength="120" required ${editing?'readonly':''} value="${esc(editing?p.barcode:generated)}" placeholder="${editing?'الباركود المسجل':'أدخل رقم الباركود أو أنشئه تلقائيًا'}"></label><div class="milo-barcode-actions">${editing?'':`<button class="btn milo-barcode-refresh" id="miloBarcodeRefresh" type="button" ${generated?'':'disabled'} title="إنشاء رقم جديد">${MiloIcons.svg('refresh')}<span>رقم جديد</span></button>`}<button class="btn milo-barcode-copy" id="miloBarcodeCopy" type="button" title="نسخ الرقم">${MiloIcons.svg('clipboard')}<span>نسخ</span></button></div></div>
+   <p id="miloBarcodeFeedback" class="milo-barcode-feedback" role="status" aria-live="polite"></p>
+   <p class="milo-barcode-footnote">${editing?'يمكنك تعديل بقية بيانات المنتج دون تغيير الباركود.':'التوليد للاستخدام داخل المتجر وملصقات ميلو فقط، وليس رقمًا تجاريًا مسجلًا لدى GS1.'}</p>
+  </section>`;
+}
+function miloInitBarcodeCard(p){
+ const input=$('miloBarcodeInput'),auto=$('miloBarcodeAuto'),manual=$('miloBarcodeManual'),refresh=$('miloBarcodeRefresh'),copy=$('miloBarcodeCopy'),feedback=$('miloBarcodeFeedback');
+ if(!input)return;
+ let mode=p?'locked':input.value?'auto':'manual';
+ function updateFeedback(message,tone){
+  if(!feedback)return;
+  feedback.dataset.tone=tone||'neutral';
+  feedback.textContent=message;
+ }
+ function checkAvailability(){
+  const code=input.value.trim();
+  if(!code){updateFeedback('رقم الباركود مطلوب قبل حفظ المنتج.','warning');return false;}
+  if(!p&&state.products.some(item=>String(item.barcode).trim()===code)){
+   updateFeedback('هذا الباركود مستخدم بالفعل لمنتج آخر. يرجى تغيير الرقم.','error');return false;
+  }
+  updateFeedback(p?'رقم الباركود مثبت لهذا المنتج.':mode==='auto'?'الرقم مولّد تلقائيًا، وسيُتحقق من عدم تكراره على الخادم قبل الحفظ.':'الرقم متاح في القائمة الحالية، وسيُتحقق منه على الخادم قبل الحفظ.','success');
+  return true;
+ }
+ function setMode(next){
+  if(p)return;
+  mode=next;
+  if(auto){auto.classList.toggle('active',next==='auto');auto.setAttribute('aria-pressed',String(next==='auto'))}
+  if(manual){manual.classList.toggle('active',next==='manual');manual.setAttribute('aria-pressed',String(next==='manual'))}
+  if(refresh)refresh.hidden=next!=='auto';
+  input.readOnly=next==='auto';
+  if(next==='manual'){
+   input.value='';input.placeholder='اكتب الرقم أو امسحه بقارئ الباركود';input.focus();
+  }else{
+   const code=miloGenerateUniqueBarcode();input.value=code;
+   if(!code){setMode('manual');updateFeedback('تعذر توليد رقم آمن على هذا المتصفح. استخدم الإدخال اليدوي.','error');return;}
+  }
+  checkAvailability();
+ }
+ if(!p){input.readOnly=mode==='auto';if(refresh)refresh.hidden=mode!=='auto';
+  if(auto)auto.addEventListener('click',()=>setMode('auto'));
+  if(manual)manual.addEventListener('click',()=>setMode('manual'));
+  if(refresh)refresh.addEventListener('click',()=>{
+   const code=miloGenerateUniqueBarcode();if(!code){updateFeedback('تعذر إنشاء رقم جديد. اختر الإدخال اليدوي.','error');return;}
+   input.value=code;checkAvailability();
+  });
+  input.addEventListener('input',checkAvailability);
+ }
+ if(copy)copy.addEventListener('click',async()=>{
+  if(!input.value.trim())return updateFeedback('لا يوجد رقم لنسخه.','warning');
+  try{await navigator.clipboard.writeText(input.value.trim());updateFeedback('تم نسخ الباركود.','success')}
+  catch(_){input.select();updateFeedback('حدد الرقم وانسخه من لوحة المفاتيح.','warning')}
+ });
+ if(!p&&!input.value){updateFeedback('تعذر توليد رقم تلقائي. اختر الإدخال اليدوي.','warning')}
+ else checkAvailability();
+}
+
+function productEditor(p){const opt=p?optionsOf(p):{sizes:[],extras:[]};draftSizes=opt.sizes.map(x=>({...x}));draftExtras=opt.extras.map(x=>({...x}));const cat=categoryNames().filter(x=>x!=='الكل');const generatedBarcode=p?'':miloGenerateUniqueBarcode();const body=`<form id="productForm" class="form">${field('اسم المنتج','name',p?.name||'','text','required maxlength="500"')}${miloBarcodeCard(p,generatedBarcode)}${field('التصنيف (يمكن كتابة اسم جديد)','category',p?.category||'عام','text','list="productCategories" required')}<datalist id="productCategories">${cat.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>${field('سعر التجزئة','price',p?.price??'0','number','min="0" step="0.01" required')}${field('سعر الجملة','wholesalePrice',p?.wholesalePrice??'0','number','min="0" step="0.01" required')}${field('سعر التكلفة','costPrice',p?.costPrice??'0','number','min="0" step="0.01" required')}${field('المخزون المتاح','stock',p?.stock??'0','number','min="0" step="0.001" required')}${field('حد تنبيه المخزون','minStock',p?.minStock??'0','number','min="0" step="0.001" required')}${field('الوحدة','unit',p?.unit||'حبة')}<div class="milo-photo-section"><span class="milo-photo-title">صورة المنتج</span><div class="milo-photo-layout"><div id="miloProductPhotoPreview" class="milo-photo-preview">${/^https:\/\//i.test(p?.imageUrl||'')?`<img src="${esc(p.imageUrl)}" alt="صورة المنتج">`:'<span>▦</span>'}</div><div class="milo-photo-details"><label for="miloProductAlbum" class="btn secondary milo-album-label">اختيار صورة من الألبوم</label><input id="miloProductAlbum" type="file" accept="image/jpeg,image/png,image/webp" class="milo-photo-file"><p id="miloProductPhotoHint" class="small-note">PNG أو JPG أو WebP • سيتم ضغط الصورة قبل رفعها إلى مساحة صور ميلو على Google Drive</p><button type="button" class="btn outline small" id="miloClearPhoto">إزالة الصورة</button></div></div>${field('أو رابط صورة HTTPS','imageUrl',p?.imageUrl||'','url','placeholder="https://..."')}</div>${textArea('وصف الصنف','description',p?.description||'')}${checkbox('مخزون غير محدود','unlimitedStock',p?.unlimitedStock)}<div class="form-section"><h3>الأحجام</h3><p class="form-help">يمكنك إضافة عدة أحجام وأسعار مستقلة. مثال: صغير ووسط وكبير.</p><div id="sizeRows"></div><button type="button" class="btn secondary small" data-action="add-option" data-id="sizes">+ إضافة حجم</button></div><div class="form-section"><h3>الإضافات</h3><p class="form-help">الإضافة ذات السعر صفر تكون مجانية.</p><div id="extraRows"></div><button type="button" class="btn secondary small" data-action="add-option" data-id="extras">+ إضافة اختيار</button></div></form>`;
  hdr(p?'تعديل المنتج':'إضافة منتج جديد',p?'تحديث بيانات الصنف بشكل منظم وآمن':'أدخل بيانات الصنف ثم احفظها مباشرة في قاعدة البيانات',btn('العودة للمنتجات','back-products','','outline'));
  setContent(`<section class="milo-editor-shell" dir="rtl"><div class="milo-editor-intro"><div class="milo-editor-icon">${MiloIcons.svg(MiloIcons.pick('','package'))}</div><div><span class="milo-editor-eyebrow">MILO CASHIER / PRODUCTS</span><h2>${p?'تعديل بيانات المنتج':'بيانات المنتج الجديد'}</h2><p>واجهة تحرير مباشرة، بدون نوافذ منبثقة. جميع الحقول واضحة ويمكن مراجعتها قبل الحفظ.</p></div></div><div class="milo-editor-form-wrap">${body}</div><div id="miloProductSaveStatus" class="milo-product-save-status" role="status" aria-live="polite" hidden></div><div class="milo-editor-footer"><span class="milo-editor-footnote">سيتم حفظ البيانات على الخادم والتحقق من المزامنة قبل تأكيد النجاح.</span><div class="milo-editor-buttons"><button class="btn outline" type="button" data-action="back-products" id="miloProductCancel">إلغاء</button><button class="btn primary milo-product-save-btn" id="miloProductSave" data-action="save-product-inline" type="button"><span class="milo-save-spinner" aria-hidden="true"></span><span class="milo-save-label">${p?'حفظ التعديلات':'حفظ المنتج'}</span></button></div></div></section>`);
- updateOptionsFields();miloSetupAlbumPhoto();$('productForm').dataset.editing=p?'1':'0';$('productForm')?.addEventListener('submit',e=>{e.preventDefault();void saveProductForm()});$('productForm')?.querySelector('[name="name"]')?.focus();}
+ updateOptionsFields();miloSetupAlbumPhoto();miloInitBarcodeCard(p);$('productForm').dataset.editing=p?'1':'0';$('productForm')?.addEventListener('submit',e=>{e.preventDefault();void saveProductForm()});$('productForm')?.querySelector('[name="name"]')?.focus();}
 function readOptionEdits(){document.querySelectorAll('[data-opt]').forEach(el=>{const arr=el.dataset.opt==='sizes'?draftSizes:draftExtras;const item=arr[Number(el.dataset.idx)];if(item)item[el.dataset.key]=el.dataset.key==='price'?n(el.value):el.value})}
 let miloPendingProductPhoto=null;
 function miloSetPhotoPreview(src){const el=$('miloProductPhotoPreview');if(el)el.innerHTML=src?`<img src="${esc(src)}" alt="معاينة صورة المنتج">`:'<span>▦</span>'}
@@ -597,6 +675,8 @@ async function saveProductForm(){
  if(!f.reportValidity()){miloProductStatus('error','راجع البيانات المطلوبة','يرجى تعبئة الحقول المشار إليها قبل الحفظ.');return}
  readOptionEdits();const d=formGet(f);
  if([...draftSizes,...draftExtras].some(row=>!String(row.name||'').trim()||n(row.price)<0)){miloProductStatus('error','بيانات الخيارات غير مكتملة','يجب كتابة اسم كل حجم أو إضافة وتحديد سعر غير سالب.');return}
+ d.barcode=String(d.barcode||'').trim();
+ if(!d.barcode){miloProductStatus('error','رقم الباركود مطلوب','ولّد رقمًا تلقائيًا أو أدخله يدويًا قبل الحفظ.');return}
  const old=findProduct(d.barcode);
  if(f.dataset.editing!=='1'&&state.products.some(p=>String(p.barcode).trim()===d.barcode.trim())){miloProductStatus('error','الباركود مستخدم بالفعل','استخدم باركودًا مختلفًا لهذا المنتج.');return}
  const product={...old,barcode:d.barcode.trim(),name:d.name.trim(),category:d.category.trim(),price:n(d.price),wholesalePrice:n(d.wholesalePrice),costPrice:n(d.costPrice),stock:n(d.stock),minStock:n(d.minStock),unit:d.unit.trim()||'حبة',description:d.description||'',imageUrl:d.imageUrl||'',unlimitedStock:f.elements.unlimitedStock.checked,restaurantOptionsJson:JSON.stringify({sizes:draftSizes,extras:draftExtras})};
@@ -607,6 +687,12 @@ async function saveProductForm(){
  f.querySelectorAll('input,select,textarea,button').forEach(el=>el.disabled=true);
  miloProductStatus('loading','جارٍ حفظ المنتج','يتم إرسال البيانات والتحقق من تحديث قاعدة البيانات...');
  try{
+  if(f.dataset.editing!=='1'){
+   miloProductStatus('loading','فحص تكرار الباركود','جارٍ التحقق من الرقم في قاعدة البيانات قبل إنشاء المنتج...');
+   const current=await api('products');
+   if(!Array.isArray(current.products))throw Error('تعذر التحقق من تكرار الباركود على الخادم. لم يُحفظ المنتج.');
+   if(current.products.some(item=>String(item.barcode).trim()===product.barcode))throw Error('الباركود مسجل لمنتج آخر على الخادم. اختر رقمًا مختلفًا؛ لم يُحفظ هذا المنتج.');
+  }
   if(miloPendingProductPhoto){miloProductStatus('loading','جارٍ رفع صورة المنتج','يتم حفظ الصورة بأمان في Google Drive...');const photo=await api('uploadProductImage',{imageData:miloPendingProductPhoto,barcode:product.barcode});if(!photo.imageUrl)throw Error('لم يُرجع الخادم رابط الصورة.');product.imageUrl=photo.imageUrl;}
   miloProductStatus('loading','جارٍ حفظ المنتج','يتم تحديث بيانات المنتج في قاعدة البيانات...');
   await api('saveProducts',{products:[product]});
@@ -620,7 +706,7 @@ async function saveProductForm(){
  }catch(e){miloProductStatus('error','تعذر تأكيد حفظ المنتج',String(e?.message||e));}
  finally{
   miloProductSaving=false;
-  if($('productForm')===f){f.querySelectorAll('input,select,textarea,button').forEach(el=>el.disabled=false);if(old)f.elements.barcode.readOnly=true;if(saveBtn){saveBtn.disabled=false;saveBtn.classList.remove('is-loading');saveBtn.querySelector('.milo-save-label').textContent=old?'حفظ التعديلات':'حفظ المنتج'}if(cancelBtn)cancelBtn.disabled=false;}
+  if($('productForm')===f){f.querySelectorAll('input,select,textarea,button').forEach(el=>el.disabled=false);if(old||$('miloBarcodeAuto')?.getAttribute('aria-pressed')==='true')f.elements.barcode.readOnly=true;if(saveBtn){saveBtn.disabled=false;saveBtn.classList.remove('is-loading');saveBtn.querySelector('.milo-save-label').textContent=old?'حفظ التعديلات':'حفظ المنتج'}if(cancelBtn)cancelBtn.disabled=false;}
  }
 }
 async function deleteProduct(bc){await api('deleteEntity',{entityType:'product',recordId:bc});state.products=(await api('products')).products||[];renderProductsPage();toast('تم حذف المنتج دون المساس بالفواتير القديمة')}
