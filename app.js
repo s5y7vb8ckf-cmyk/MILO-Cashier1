@@ -872,7 +872,21 @@ let miloDeviceDetails=null;
 let miloSelectedDevice='';
 let miloDevicePeriod={from:new Date(Date.now()-29*86400000+3*3600000).toISOString().slice(0,10),to:isoDay()};
 let miloDeviceRequestSeq=0;
-const miloDeviceDate=x=>{if(!x)return '—';const t=new Date(x);return Number.isFinite(t.getTime())?t.toLocaleString('ar-SA',{timeZone:'Asia/Riyadh',dateStyle:'medium',timeStyle:'short'}):String(x).slice(0,40)};
+// Use the Gregorian calendar and Saudi Arabic numerals like ١٤/١١/٢٠٢٦، ٦:٣٣:٤٣ م.
+// Unzoned timestamps written by MILO in Riyadh time are interpreted in Riyadh time.
+const miloDeviceDate=x=>{
+ if(!x)return '—';
+ let raw=String(x).trim();
+ if(!raw)return '—';
+ const local=raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+ if(local)raw=`${local[1]}-${local[2]}-${local[3]}T${local[4]}:${local[5]}:${local[6]||'00'}+03:00`;
+ const dt=new Date(raw);
+ if(!Number.isFinite(dt.getTime()))return String(x).slice(0,40);
+ return new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab',{
+  timeZone:'Asia/Riyadh',year:'numeric',month:'numeric',day:'numeric',
+  hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true
+ }).format(dt);
+};
 function miloDevicePeriodValid(from,to){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to)throw Error('اختر تاريخ بداية ونهاية صحيحين');
  const t0=Date.parse(from+'T00:00:00Z'),t1=Date.parse(to+'T00:00:00Z');
@@ -920,9 +934,23 @@ function miloDeviceSelfPanel(message=''){
 }
 function miloDeviceCard(device){
  const current=device.deviceCode===terminalId();
- const labels=[device.deviceName||'جهاز بدون اسم',device.username||'',device.deviceCode||''];
- return `<article class="milo-device-card" data-device-search="${esc(labels.join(' ').toLowerCase())}"><div class="milo-device-card-main"><div class="milo-device-glyph" aria-hidden="true">${MiloIcons.svg('monitor')}</div><div class="milo-device-card-heading"><h3>${esc(device.deviceName||'جهاز بدون اسم')}${current?' <span class="milo-device-current">هذا الجهاز</span>':''}</h3><div class="milo-device-code">${esc(device.deviceCode||'')}</div></div></div><div class="milo-device-card-details"><div><span>آخر نشاط مسجل</span><strong>${esc(miloDeviceDate(device.lastSeen))}</strong></div><div><span>المستخدم</span><strong>${esc(device.username||'غير محدد')}</strong></div><div><span>حالة المتابعة</span><strong>${esc(device.connectionLabel||'آخر نشاط مسجل')}</strong></div></div><div class="milo-device-card-actions">${btn('فتح تقرير الجهاز','device-report',device.deviceCode,'primary')}</div></article>`;
+ const labels=[device.deviceName||'',device.username||'',device.deviceCode||''];
+ const label=(text,value)=>`<div class="milo-device-detail-line"><span>${text}</span><strong>${esc(value)}</strong></div>`;
+ return `<article class="milo-device-card" data-device-search="${esc(labels.join(' ').toLowerCase())}">
+  <div class="milo-device-card-main">
+   <div class="milo-device-glyph" aria-hidden="true">${MiloIcons.svg('monitor')}</div>
+   <div class="milo-device-card-heading"><h3>${esc(device.deviceName||'جهاز بدون اسم')}${current?' <span class="milo-device-current">هذا الجهاز</span>':''}</h3></div>
+  </div>
+  <div class="milo-device-identity"><span>رمز الجهاز</span><code dir="ltr">${esc(device.deviceCode||'—')}</code></div>
+  <div class="milo-device-card-details">
+   ${label('المستخدم',device.username||'غير محدد')}
+   ${label('آخر نشاط',miloDeviceDate(device.lastSeen))}
+   ${label('آخر فتح',miloDeviceDate(device.lastOpen))}
+  </div>
+  <div class="milo-device-card-actions">${btn('فتح تقرير الجهاز','device-report',device.deviceCode,'primary')}</div>
+ </article>`;
 }
+
 function miloDeviceCardsHtml(){
  const remote=miloDeviceRows.filter(d=>d&&d.deviceCode);
  const missing=!remote.some(d=>d.deviceCode===terminalId());
