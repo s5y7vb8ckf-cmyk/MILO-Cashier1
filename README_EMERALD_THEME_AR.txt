@@ -7,7 +7,7 @@ MILO CASHIER — الهوية البيضاء والخضراء الجديدة
 - تشمل الواجهة: الكاشير، المنتجات، الفواتير، الورديات، المخزون، التقارير، الإعدادات، الإدارة، ومتجر العميل.
 - ملف الواجهة الجديد: milo-emerald.css ويُحمّل بعد الملف السابق؛ القوالب الهيكلية تتحول إلى الدرجات الجديدة.
 - رابط API الجديد مضمن في app.js وadmin.js وcustomer-shop.js:
-https://script.google.com/macros/s/AKfycbycbHw-QP0POkQVKWd2eGjT5ThDwVNr3yvYOrL-jbhsIcHGZmWN6FtNzadmjcVWDQlQ/exec
+https://script.google.com/macros/s/AKfycby1cJdMIYu25s6ogBSwW0tVeAraqZONAXlUytspxE2GT5N41ZCgPzgW77r-8OACJ4ZM/exec
 - رفع الصور إلى مجلد Google Drive يعتمد على نشر Code.gs وتوفر صلاحية محرر للحساب الذي يشغّل السكربت.
 - لا يعني تغيير رابط API أن الخدمة تعمل فعليًا: اختبر تسجيل الدخول، حفظ منتج وصورته، بيع فاتورة، وفتح/إغلاق الوردية قبل التشغيل التجاري.
 - لم تتم عملية نشر أو تعديل مباشر على Apps Script أو Google Sheets.

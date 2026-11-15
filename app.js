@@ -1,7 +1,7 @@
 'use strict';
 /* MILO CASHIER browser client for the REST actions in the user's Code.gs.
    This client intentionally does not claim to fix missing server-side ACL, atomicity or auth. */
-const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycbycbHw-QP0POkQVKWd2eGjT5ThDwVNr3yvYOrL-jbhsIcHGZmWN6FtNzadmjcVWDQlQ/exec';
+const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycby1cJdMIYu25s6ogBSwW0tVeAraqZONAXlUytspxE2GT5N41ZCgPzgW77r-8OACJ4ZM/exec';
 const $=id=>document.getElementById(id);
 // Login progress follows real application work; it does not claim success before completion.
 function miloSetLoginLoading(visible,message){
