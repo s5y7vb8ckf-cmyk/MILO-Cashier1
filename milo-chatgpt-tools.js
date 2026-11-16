@@ -19,6 +19,8 @@
     // Avoid sending merchants to a user-controlled destination.
     return 'https://chatgpt.com/plugins';
   }
+  const payKey = () => 'milo_pay_enabled_v1_'+String(state?.account?.storeCode||'').trim();
+  const payEnabled = () => !!String(state?.account?.storeCode||'').trim() && localStorage.getItem(payKey())==='1';
   window.renderMiloToolsPage = function renderMiloToolsPage(){
     hdr('الأدوات', 'تكاملات ميلو الخارجية وإدارة أدوات العمل');
     const configured = !!validMcpUrl();
@@ -42,6 +44,17 @@
           <button type="button" class="btn primary milo-ai-connect" id="miloChatgptConnect">${MiloIcons.svg('shield')} ربط ChatGPT</button>
           <p class="milo-ai-caption">بدون مفتاح API للتاجر · صلاحية التقارير فقط · موافقة صاحب الحساب مطلوبة</p>
         </article>
+        <article class="milo-ai-integration" aria-labelledby="miloPayTitle">
+          <div class="milo-ai-header"><span class="milo-ai-symbol" aria-hidden="true">${MiloIcons.svg('shield')}</span>
+            <div><h3 id="miloPayTitle">ميلو باي</h3><p>ربط المدفوعات مع جهاز SUNMI V2s</p></div>
+            <span class="milo-ai-tag" id="miloPayToolsBadge">${payEnabled()?'مفعّل':'غير مفعّل'}</span>
+          </div>
+          <p>بعد التفعيل يظهر زر «ميلو باي» في نافذة إتمام الدفع. يرسل المبلغ إلى صفحة MILO على جهاز SUNMI؛ لا يتحكم مباشرة في تطبيق رِواء باي.</p>
+          <div class="milo-ai-status" role="status" id="miloPayToolsStatus">${payEnabled()?'مفعّل · صفحة SUNMI جاهزة للربط':'متوقف · فعّل الخدمة لإنشاء رابط الجهاز'}</div>
+          <button type="button" class="btn primary milo-ai-connect" id="miloPayToolsToggle">${payEnabled()?'إيقاف ميلو باي':'تفعيل ميلو باي'}</button>
+          <p class="milo-ai-caption">الإعداد محفوظ على هذا المتصفح لهذا المتجر فقط، وليس تفعيلًا بنكيًا أو اشتراكًا في مزود دفع.</p>
+          ${payEnabled()?`<div class="milo-ai-status" style="margin-top:12px"><b>رابط تشغيل ميلو باي على الجهاز</b><p style="margin:8px 0;font-size:12px;overflow-wrap:anywhere" id="miloPayReceiverUrl" dir="ltr">${clean(new URL('milo-sunmi-receiver.html',location.href).href)}</p><button class="btn outline" type="button" id="miloPayCopyReceiverUrl">نسخ رابط الجهاز</button> <a class="btn outline" href="milo-sunmi-receiver.html" target="_blank" rel="noopener noreferrer">فتح الرابط</a><p style="font-size:12px">افتح الرابط على جهاز SUNMI V2s، ثم أدخل رمز اقترانه في الكاشير عند أول إرسال. تأكد من نشر Backend الجديد قبل التجربة.</p></div>`:''}
+        </article>
         <article class="milo-tools-privacy">
           <span class="milo-tools-privacy-icon" aria-hidden="true">${MiloIcons.svg('lock')}</span>
           <h3>ربط يحافظ على صلاحيات ميلو</h3>
@@ -51,6 +64,18 @@
       </div>
     </section>`);
     document.getElementById('miloChatgptConnect')?.addEventListener('click', openMiloChatgptSetup);
+    document.getElementById('miloPayCopyReceiverUrl')?.addEventListener('click', async ()=>{
+      const url=new URL('milo-sunmi-receiver.html',location.href).href;
+      try{await navigator.clipboard.writeText(url);toast('تم نسخ رابط SUNMI');}
+      catch(_){const el=document.getElementById('miloPayReceiverUrl');if(el){const range=document.createRange();range.selectNodeContents(el);getSelection()?.removeAllRanges();getSelection()?.addRange(range);}toast('حدّد الرابط وانسخه يدويًا');}
+    });
+    document.getElementById('miloPayToolsToggle')?.addEventListener('click', ()=>{
+      const code=String(state?.account?.storeCode||'').trim();
+      if(!code){toast('سجّل الدخول إلى حساب المتجر أولًا',true);return;}
+      localStorage.setItem(payKey(),payEnabled()?'0':'1');
+      renderMiloToolsPage();
+      toast(payEnabled()?'تم تفعيل ميلو باي على هذا الجهاز':'تم إيقاف ميلو باي على هذا الجهاز');
+    });
   };
   function openMiloChatgptSetup(){
     const configured = validMcpUrl();
