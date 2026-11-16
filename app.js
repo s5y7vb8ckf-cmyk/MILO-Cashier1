@@ -1,7 +1,7 @@
 'use strict';
 /* MILO CASHIER browser client for the REST actions in the user's Code.gs.
    This client intentionally does not claim to fix missing server-side ACL, atomicity or auth. */
-const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycbwUOg1yyX76a5NR0galXCgtGjygIxnKO4qv-3MkINdLjtqu0duFX-ATe4o-AKJMSfzg/exec';
+const API_URL=(location.hostname==='127.0.0.1'&&location.port==='37941')?'/api':'https://script.google.com/macros/s/AKfycbzWZEdZXLjUMo5ehKru9nbmvEZRacI_xdMR86Fd0f1L9Kjt3pkMvFVLSZfM-dtDbJni/exec';
 // Read-only device administration uses the separately deployed MILO ADMIN endpoint.
 // Cashier API_URL and its authentication/session remain untouched.
 const MILO_DEVICE_ADMIN_API_URL='https://script.google.com/macros/s/AKfycbw0dyo_MNwxwuxEKa7JiD4pJ-tzT-KJNxB82kZfGLMtaDJ953LK8s2_ss4B5jnR12Pj/exec';
