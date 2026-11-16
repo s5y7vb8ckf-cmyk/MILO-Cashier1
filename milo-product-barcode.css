@@ -1,0 +1,31 @@
+/* MILO CASHIER — product barcode designer: additional styling only. */
+.milo-editor-form-wrap #productForm>.milo-barcode-card {grid-column:1/-1;min-width:0}
+.milo-barcode-card {position:relative;display:grid;gap:15px;padding:21px 23px;border:1px solid #c9e5dd;border-radius:18px;background:linear-gradient(136deg,#f6fcfa 0%,#fff 65%);box-shadow:0 10px 28px rgba(7,78,65,.04)}
+.milo-barcode-heading {display:flex;align-items:center;gap:12px;min-width:0}
+.milo-barcode-emblem {width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#066b5d;color:#fff;box-shadow:0 8px 22px rgba(0,111,91,.13);flex-shrink:0}
+.milo-barcode-emblem svg {width:23px;height:23px;stroke-width:1.8}
+.milo-barcode-heading>div:nth-child(2) {min-width:0;flex:1}
+.milo-barcode-heading h3 {margin:0 0 4px;font-size:16px;line-height:1.4;color:#103a33;font-weight:900}
+.milo-barcode-heading p {margin:0;color:#5c756c;font-size:12px;line-height:1.7}
+.milo-barcode-head-badge {border-radius:30px;padding:6px 12px;border:1px solid #d3e8df;background:#eaf8f2;color:#076b5a;font-size:11px;white-space:nowrap;font-weight:800}
+.milo-barcode-mode {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.milo-barcode-mode-btn {display:flex;gap:12px;align-items:center;padding:13px 15px;text-align:right;border-radius:13px;border:1px solid #d8e8e2;background:#fff;color:#36544b;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s}
+.milo-barcode-mode-btn:hover {border-color:#7ab7a5;background:#fbfffd}
+.milo-barcode-mode-btn.active,.milo-barcode-mode-btn[aria-pressed="true"] {background:#e8f7f0;border-color:#0a8570;box-shadow:inset 0 0 0 1px #0a85702c}
+.milo-barcode-mode-btn svg {width:22px;height:22px;flex-shrink:0;color:#0a8570}
+.milo-barcode-mode-btn span {display:grid;gap:3px}.milo-barcode-mode-btn b {font-size:13px;color:#1a3930;font-weight:850}.milo-barcode-mode-btn small {font-size:11px;color:#70877d}
+.milo-barcode-value-row {display:flex;align-items:end;gap:11px;min-width:0}
+.milo-barcode-field {display:grid;gap:7px;flex:1;min-width:0;font-weight:800;color:#284e44;font-size:12px}
+.milo-editor-form-wrap .milo-barcode-input {height:50px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:750;letter-spacing:.07em;font-size:17px;text-align:center;direction:ltr;border-color:#bbd8cd;background:white}
+.milo-editor-form-wrap .milo-barcode-input[readonly] {background:#f7faf9;color:#155b4e;cursor:default}
+.milo-barcode-actions {display:flex;align-items:center;gap:7px}
+.milo-barcode-actions>.btn {height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 15px;font-size:12px;border:1px solid #c7e0d7;border-radius:11px;background:#fff;color:#076b59;font-weight:850;white-space:nowrap}
+.milo-barcode-actions>.btn:hover {border-color:#078872;background:#ecfaf4}
+.milo-barcode-actions>.btn svg {width:16px;height:16px}
+.milo-barcode-actions>.btn[hidden]{display:none!important}
+.milo-barcode-feedback {min-height:23px;margin:0;display:flex;align-items:center;gap:6px;color:#4b6c5f;font-size:11px;line-height:1.6}
+.milo-barcode-feedback[data-tone="success"]:before{content:'✓';display:grid;place-items:center;width:17px;height:17px;border-radius:100%;background:#d8f5e6;color:#0b7456;font-size:11px;font-weight:900}
+.milo-barcode-feedback[data-tone="error"]{color:#b42318}.milo-barcode-feedback[data-tone="warning"]{color:#a36113}
+.milo-barcode-lock-msg {padding:11px 13px;background:#f4f8f7;border:1px solid #dcebe5;border-radius:10px;color:#4b665c;font-size:12px}
+.milo-barcode-footnote {margin:0;font-size:11px;color:#6d837b;line-height:1.7}
+@media(max-width:680px){.milo-barcode-card{padding:16px;gap:12px}.milo-barcode-heading{flex-wrap:wrap}.milo-barcode-head-badge{margin-inline-start:auto}.milo-barcode-mode-btn{padding:12px 9px;gap:8px}.milo-barcode-mode-btn b{font-size:12px}.milo-barcode-mode-btn small{font-size:10px}.milo-barcode-value-row{flex-direction:column;align-items:stretch}.milo-barcode-actions{width:100%}.milo-barcode-actions>.btn{flex:1}.milo-editor-form-wrap .milo-barcode-input{font-size:16px}}

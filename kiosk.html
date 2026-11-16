@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#123b2b"><meta name="robots" content="noindex,nofollow,noarchive">
+ <meta name="referrer" content="no-referrer">
+ <meta name="description" content="شاشة الطلب الذاتي — نظام ميلو">
+ <title>شاشة الخدمة الذاتية | ميلو</title>
+ <link rel="icon" href="icons/milo-v17-192.png" type="image/png">
+ <link rel="stylesheet" href="kiosk.css?v=20261115-k1">
+ <script src="kiosk.js?v=20261115-k1" defer></script>
+</head>
+<body>
+ <div class="kiosk-shell">
+  <header class="kiosk-header"><div class="kiosk-brand"><img src="icons/milo-v17-192.png" alt="ميلو"><div><strong id="brandName">مطعم ميلو</strong><small>نظام الطلب الذاتي</small></div></div><span class="kiosk-tag">MILO SELF-SERVICE</span></header>
+  <main class="kiosk-layout">
+   <section class="kiosk-main">
+    <div class="kiosk-welcome"><p>أهلًا وسهلًا</p><h1>اختر طلبك بكل سهولة</h1><span>تصفح الأصناف، ثم أكد الطلب واستلم رقمه وتوجه للدفع عند الكاشير.</span></div>
+    <div class="kiosk-controls"><div class="kiosk-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.3-4.3"/></svg><input id="kioskSearch" placeholder="ابحث عن صنف" aria-label="البحث عن المنتجات" autocomplete="off"></div><div id="kioskCategories" class="kiosk-categories" aria-label="تصنيفات المنتجات"></div></div>
+    <div id="kioskProducts" class="kiosk-product-grid"><div class="kiosk-loading">جارٍ تحميل قائمة الطعام…</div></div>
+   </section>
+   <aside class="kiosk-cart" id="kioskCart"><div class="kiosk-cart-head"><div><small>طلبك الحالي</small><h2>سلة المشتريات</h2></div><span class="kiosk-cart-count" id="kioskItemCount">0</span><button type="button" class="kiosk-cart-close" id="kioskCloseCart" aria-label="العودة إلى الأصناف">رجوع للأصناف</button></div><div class="kiosk-cart-list" id="kioskCartItems"><div class="kiosk-empty-cart">لم تضف أي صنف بعد</div></div><div class="kiosk-cart-bottom"><div class="kiosk-total"><span>الإجمالي</span><strong id="kioskTotal">0.00 ر.س</strong></div><button type="button" class="kiosk-primary" id="kioskCheckout" disabled>إتمام الطلب <span>←</span></button><small class="kiosk-pay-note">الدفع عند الكاشير بعد تأكيد الطلب</small></div></aside>
+  </main>
+  <button type="button" id="kioskMobileCart" class="kiosk-mobile-cart" hidden>عرض السلة <span id="kioskMobileCount">0</span></button>
+  <footer>© 2026 نظام ميلو. جميع الحقوق محفوظة.</footer>
+ </div>
+ <div class="kiosk-modal hidden" id="kioskModal" role="dialog" aria-modal="true" aria-labelledby="kioskModalTitle"><div class="kiosk-modal-shade"></div><div class="kiosk-modal-card"><div class="kiosk-modal-header"><h2 id="kioskModalTitle">تأكيد الطلب</h2><button type="button" id="kioskClose" aria-label="إغلاق">×</button></div><div id="kioskModalBody"></div></div></div>
+ <div id="kioskAlert" class="kiosk-alert" role="alert" aria-live="polite" hidden></div>
+</body></html>
