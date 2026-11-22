@@ -1,0 +1,20 @@
+/* MILO navigation organization, 2026-11-22 — visual-only, no route replacements */
+#mainNav.side-menu{gap:5px;padding:1px 1px 10px}
+#mainNav .milo-nav-section{display:block;min-width:0}
+#mainNav .milo-nav-heading{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:11px 13px;border:1px solid transparent;border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:800;text-align:right;cursor:pointer;white-space:nowrap}
+#mainNav .milo-nav-heading:hover,#mainNav .milo-nav-section.is-open>.milo-nav-heading{background:rgba(28,152,136,.14)}
+#mainNav .milo-nav-heading:focus-visible,#mainNav .side-link:focus-visible{outline:2px solid #08a6a1;outline-offset:1px}
+#mainNav .milo-nav-title{flex:1;min-width:0}
+#mainNav .milo-nav-chevron{font-size:18px;font-weight:600;transition:transform .15s ease;line-height:1}
+#mainNav .milo-nav-section.is-open .milo-nav-chevron{transform:rotate(180deg)}
+#mainNav .milo-nav-children{padding:2px 13px 5px 0;border-right:1px solid rgba(8,166,161,.25);margin-right:23px}
+#mainNav .milo-nav-children[hidden]{display:none!important}
+#mainNav .milo-nav-child{min-height:38px!important;padding:8px 10px!important;font-size:11px!important;gap:9px!important}
+#mainNav .milo-nav-child .side-icon{width:19px;flex-basis:19px}
+#mainNav .milo-nav-child .side-icon svg{width:17px;height:17px}
+#mainNav .milo-nav-heading .side-icon svg{width:19px;height:19px}
+#mainNav .milo-nav-top{min-height:48px!important}
+#mainNav .milo-nav-section:has(.milo-nav-child.active)>.milo-nav-heading{color:#008f86;font-weight:900}
+.sidebar-collapsed #mainNav .milo-nav-heading{justify-content:center;padding-inline:8px}
+.sidebar-collapsed #mainNav .milo-nav-children{display:none!important}
+@media (max-width:900px){.sidebar-collapsed #mainNav .milo-nav-heading{justify-content:flex-start;padding-inline:13px}.sidebar-collapsed #mainNav .milo-nav-children:not([hidden]){display:block!important}}
