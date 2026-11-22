@@ -1,5 +1,6 @@
 /** Milo Cashier - قاعدة البيانات السحابية backend. Bind script to the spreadsheet. */
-const SHEETS = { accounts:'Accounts', products:'Products', reports:'Reports', shifts:'Shifts', customers:'Customers', suppliers:'Suppliers', storeSettings:'StoreSettings', expenses:'Expenses', promotions:'Promotions', employees:'Employees', returns:'Returns', purchases:'Purchases', purchaseItems:'PurchaseItems', vouchers:'Vouchers', deviceActivity:'DeviceActivity', deviceStatus:'DeviceStatus', deviceAlerts:'DeviceAlerts', supportTickets:'SupportTickets', reportDaily:'ReportDaily', deletedRecords:'DeletedRecords', customerOrders:'CustomerOrders', kitchenOrders:'KitchenOrders' };
+const SHEETS = { accounts:'Accounts', products:'Products', reports:'Reports', shifts:'Shifts', customers:'Customers', suppliers:'Suppliers', storeSettings:'StoreSettings', expenses:'Expenses', promotions:'Promotions', employees:'Employees', returns:'Returns', purchases:'Purchases', purchaseItems:'PurchaseItems', vouchers:'Vouchers', deviceActivity:'DeviceActivity', deviceStatus:'DeviceStatus', deviceAlerts:'DeviceAlerts', supportTickets:'SupportTickets', reportDaily:'ReportDaily', deletedRecords:'DeletedRecords', customerOrders:'CustomerOrders', kitchenOrders:'KitchenOrders', categories:'Categories' };
+const MILO_CATEGORY_HEADERS=['store_code','name','created_at'];
 const ACCOUNT_HEADERS = ['store_code','username','password','owner_name','store_name','vat_number','district','phone','address','subscription_end','days_left','status','notes','max_devices','max_users'];
 const PRODUCT_HEADERS = ['store_code','barcode','name','price','wholesale_price','cost_price','stock','category','unit','min_stock','description','image_url','unlimited_stock','restaurant_options_json'];
 const REPORT_DAILY_HEADERS = ['store_code','report_id','device_code','report_date','invoice_count','subtotal','sales_total','vat','discount','cash','card','cost','gross_profit','top_products_json','updated_at','terminal_id','terminal_name'];
@@ -107,8 +108,11 @@ function miloDeviceAccess_(req,storeCode,register){
  }finally{lock.releaseLock();}
 }
 
-function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','getSupportConversation','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink','invoicePdf'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
+function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','categories','saveCategory','deleteCategory','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','getSupportConversation','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink','invoicePdf'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
  if(action==='login'||action==='ping')return {ok:true,account:auth.account};
+ if(action==='categories')return miloListCategories_(storeCode);
+ if(action==='saveCategory')return miloSaveCategory_(storeCode,req.name);
+ if(action==='deleteCategory')return miloDeleteCategory_(storeCode,req.name);
  if(action==='invoiceShareLink')return miloInvoiceShareLink_(storeCode,req);
  if(action==='invoicePdf')return miloInvoicePdfFile_(storeCode,req);
   if(action==='kitchenOrders')return miloKitchenOrders_(storeCode,req);
@@ -724,7 +728,7 @@ function ensureSheet_(ss,name,headers){
 function setup(){
  const ss=book_();
  for(const [name,headers] of [[SHEETS.accounts,ACCOUNT_HEADERS],[SHEETS.products,PRODUCT_HEADERS],
- [SHEETS.reports,REPORT_HEADERS],[SHEETS.kitchenOrders,KITCHEN_HEADERS],[SHEETS.customerOrders,MILO_CUSTOMER_ORDER_HEADERS],[SHEETS.reportDaily,REPORT_DAILY_HEADERS],[SHEETS.shifts,SHIFT_HEADERS],[SHEETS.customers,CONTACT_HEADERS],
+ [SHEETS.reports,REPORT_HEADERS],[SHEETS.categories,MILO_CATEGORY_HEADERS],[SHEETS.kitchenOrders,KITCHEN_HEADERS],[SHEETS.customerOrders,MILO_CUSTOMER_ORDER_HEADERS],[SHEETS.reportDaily,REPORT_DAILY_HEADERS],[SHEETS.shifts,SHIFT_HEADERS],[SHEETS.customers,CONTACT_HEADERS],
  [SHEETS.suppliers,CONTACT_HEADERS],[SHEETS.deletedRecords,DELETED_HEADERS],[SHEETS.storeSettings,STORE_SETTING_HEADERS],
  [SHEETS.deviceActivity,DEVICE_ACTIVITY_HEADERS],[SHEETS.deviceStatus,DEVICE_STATUS_HEADERS],
  [SHEETS.deviceAlerts,DEVICE_ALERT_HEADERS],[SHEETS.supportTickets,SUPPORT_TICKET_HEADERS],
@@ -1795,4 +1799,31 @@ function miloInvoicePdfFile_(storeCode,req){
   return {ok:true,mimeType:'application/pdf',fileName:'MILO-Invoice-'+invoiceId.replace(/[^A-Za-z0-9_-]/g,'_').slice(0,70)+'.pdf',pdfBase64:Utilities.base64Encode(pdf.getBytes())};
  }catch(err){return fail_('pdf_error','تعذر إنشاء ملف PDF: '+err.message);}
  finally{if(doc){try{DriveApp.getFileById(doc.getId()).setTrashed(true);}catch(ignore){}}}
+}
+
+// Store-scoped standalone categories (supports empty categories before any product is added).
+function miloListCategories_(storeCode){
+ const sh=ensureSheet_(book_(),SHEETS.categories,MILO_CATEGORY_HEADERS),t=table_(SHEETS.categories);
+ const categories=[];
+ for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===storeCode){
+  const name=str_(col_(t,t.values[i],'name'));if(name&&!categories.includes(name))categories.push(name);
+ }
+ return {ok:true,categories};
+}
+function miloSaveCategory_(storeCode,name){
+ name=str_(name);if(!name||name.length>80||/[\r\n]/.test(name)||name==='الكل')return fail_('bad_request','اسم التصنيف غير صالح');
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{ensureSheet_(book_(),SHEETS.categories,MILO_CATEGORY_HEADERS);const t=table_(SHEETS.categories);
+  for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===storeCode&&str_(col_(t,t.values[i],'name'))===name)return {ok:true,duplicate:true};
+  if(t.values.filter(r=>str_(col_(t,r,'store_code'))===storeCode).length>=300)return fail_('limit','الحد الأقصى 300 تصنيف');
+  const row={store_code:storeCode,name:safeCell_(name),created_at:new Date().toISOString()};t.sh.appendRow(t.headers.map(h=>row[h]||''));return {ok:true};
+ }finally{lock.releaseLock();}
+}
+function miloDeleteCategory_(storeCode,name){
+ name=str_(name);if(!name||name==='الكل')return fail_('bad_request','اسم التصنيف غير صالح');
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{ensureSheet_(book_(),SHEETS.categories,MILO_CATEGORY_HEADERS);const t=table_(SHEETS.categories);
+  for(let i=t.values.length-1;i>=1;i--)if(str_(col_(t,t.values[i],'store_code'))===storeCode&&str_(col_(t,t.values[i],'name'))===name)t.sh.deleteRow(i+1);
+  return {ok:true};
+ }finally{lock.releaseLock();}
 }
