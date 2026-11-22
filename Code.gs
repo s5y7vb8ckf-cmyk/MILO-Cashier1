@@ -22,7 +22,7 @@ const EXTRA_SCHEMAS = {
 const DEVICE_ACTIVITY_HEADERS = ['store_code','event_id','device_code','device_name','username','owner_name','event_type','occurred_at','received_at','details'];
 const DEVICE_STATUS_HEADERS = ['store_code','device_code','device_name','username','owner_name','last_open','last_close','last_seen','current_status','inactivity_alert_at','updated_at'];
 const DEVICE_ALERT_HEADERS = ['store_code','device_code','device_name','owner_name','alert_type','last_seen','alert_at','details'];
-const SUPPORT_TICKET_HEADERS = ['store_code','ticket_id','occurred_at','received_at','device_code','device_name','username','owner_name','description','error_summary','status','admin_reply','reply_at'];
+const SUPPORT_TICKET_HEADERS = ['store_code','ticket_id','occurred_at','received_at','device_code','device_name','username','owner_name','description','error_summary','status','admin_reply','reply_at','attachment_name','attachment_url'];
 const ACTIVE_VALUES = ['مفعل','مفعّل','active','1','yes','true','نعم'];
 function fail_(error,message){return {ok:false,error:error,message:message};}
 function str_(v){return v==null?'':String(v).trim();}
@@ -814,11 +814,29 @@ function submitSupportTicket_(storeCode,account,ticket){
   ensureMonitorSheets_();ensureSheet_(book_(),SHEETS.supportTickets,SUPPORT_TICKET_HEADERS);const t=table_(SHEETS.supportTickets);requireCols_(t,SUPPORT_TICKET_HEADERS);
   if(t.values.slice(1).some(r=>str_(col_(t,r,'store_code'))===storeCode&&str_(col_(t,r,'ticket_id'))===str_(ticket.ticketId)))
     return {ok:true,duplicate:true};
+  let attachmentName='',attachmentUrl='';
+  if(ticket.attachment){
+   const a=ticket.attachment;
+   const mime=str_(a.mimeType);
+   const base=str_(a.base64);
+   if(!['image/jpeg','image/png','application/pdf'].includes(mime)||base.length>2800000||!/^[A-Za-z0-9+/]+={0,2}$/.test(base))return fail_('bad_request','المرفق غير صالح أو كبير جدًا');
+   const bytes=Utilities.base64Decode(base);
+   if(bytes.length>2*1024*1024||bytes.length<4)return fail_('bad_request','حجم المرفق غير مسموح');
+   const first=bytes.slice(0,5).map(x=>x&255);
+   const good=mime==='application/pdf'?first[0]===37&&first[1]===80&&first[2]===68&&first[3]===70:
+     mime==='image/png'?first[0]===137&&first[1]===80&&first[2]===78&&first[3]===71:
+     first[0]===255&&first[1]===216&&first[2]===255;
+   if(!good)return fail_('bad_request','نوع الملف غير مطابق للمحتوى');
+   attachmentName=safeLimited_(str_(a.name).replace(/[\\/]/g,'_'),100)||'مرفق';
+   // Kept private in the script owner's Google Drive; only the owner can open the sheet link.
+   const file=DriveApp.createFile(Utilities.newBlob(bytes,mime,'MILO_'+str_(ticket.ticketId)+'_'+attachmentName));
+   attachmentUrl=file.getUrl();
+  }
   const now=new Date().toISOString();const row={store_code:storeCode,ticket_id:str_(ticket.ticketId),
    occurred_at:safeLimited_(ticket.occurredAt,35),received_at:now,device_code:code,
    device_name:safeLimited_(ticket.deviceName,80),username:safeLimited_(account.username,120),
    owner_name:safeLimited_(account.ownerName,150),description:safeLimited_(description,1200),
-   error_summary:safeLimited_(ticket.errorSummary,400),status:'جديد'};
+   error_summary:safeLimited_(ticket.errorSummary,400),status:'جديد',attachment_name:attachmentName,attachment_url:attachmentUrl};
   t.sh.appendRow(rowFor_(t.headers,row));return {ok:true};
  }finally{lock.releaseLock();}
 }
@@ -837,7 +855,7 @@ function miloSupportConversation_(storeCode,account,req){
   const format=v=>v instanceof Date?Utilities.formatDate(v,Session.getScriptTimeZone(),"yyyy-MM-dd'T'HH:mm:ss"):str_(v);
   entries.push({ticketId:str_(val('ticket_id')),description:str_(val('description')),
    occurredAt:format(val('occurred_at')),receivedAt:format(val('received_at')),
-   status:str_(val('status')),adminReply:str_(val('admin_reply')).slice(0,3000),replyAt:format(val('reply_at'))});
+   status:str_(val('status')),attachmentName:str_(val('attachment_name')),adminReply:str_(val('admin_reply')).slice(0,3000),replyAt:format(val('reply_at'))});
  }
  entries.sort((a,b)=>String(a.receivedAt).localeCompare(String(b.receivedAt)));
  return {ok:true,messages:entries.slice(-100)};
