@@ -612,15 +612,20 @@ function miloDayClosingReportHtml(shift,paper,dayRows,meta={}){
  const section=(name,items)=>`<div class="milo-shift-group"><div class="milo-shift-group-title">${esc(name)}</div>${items.join('')}</div>`;
  const stats=reportProductStats(dayRows).items.sort((a,b)=>b.qty-a.qty).slice(0,5);
  const productRows=stats.map((p,i)=>r(`${i+1}. ${p.name}`,`${p.qty}${p.estimated?' تقريبًا':''}`));
- const terminalLabels=totals.terminals.length?totals.terminals.join('، '):'لا توجد مبيعات';
- const caution=meta.pendingUnknown?'تنبيه: لا يمكن التأكد من المبيعات غير المتزامنة على الأجهزة الأخرى.':'بيانات اليوم تشمل الفواتير المعتمدة المتاحة على الخادم فقط.';
- return `<section id="receipt" class="print-receipt milo-special-ticket milo-shift-ticket milo-day-close-ticket" data-paper="${paper}" style="--receipt-width:${paper==='58'?'54':'76'}mm;--receipt-pad:${printPrefs().margin}mm;--receipt-offset:${printPrefs().receiptOffset}mm" dir="rtl"><div class="receipt-inner"><div class="receipt-head"><div class="milo-shift-heading">MILO CASHIER</div><h2>تقرير إغلاق الوردية واليوم</h2><div class="receipt-sub">${esc(state.settings.store_name||state.account?.storeName||'كاشير ميلو')}</div>${state.settings.address?`<div class="receipt-sub">${esc(state.settings.address)}</div>`:''}</div>
- ${section('بيانات الإغلاق',[r('تاريخ اليوم',day),r('حتى وقت الإغلاق',vDate(shift.closed_at)),r('رقم الوردية',shift.shift_id||'—'),r('الكاشير',shift.cashier||'—'),r('الجهاز',state.terminalName||shift.terminal||'—'),r('بداية الوردية',vDate(shift.opened_at)),r('نهاية الوردية',vDate(shift.closed_at))])}
- ${section('حساب الوردية الحالية',[r('عدد الفواتير',shift.invoice_count),r('إجمالي المبيعات',amt(shift.total_sales),true),r('نقدًا',amt(shift.cash_sales)),r('شبكة',amt(shift.card_sales)),r('الخصومات',amt(shift.discount)),r('الضريبة المتضمنة',amt(shift.vat))])}
- ${section('تسوية النقدية',[r('عهدة بداية الوردية',amt(shift.opening_cash)),r('النقد المتوقع',amt(shift.expected_cash)),r('النقد المعدود',amt(shift.closing_cash)),r('فرق الصندوق',amt(cashDiff),true)])}
- ${section('إجمالي اليوم - جميع أجهزة المحل',[r('عدد الفواتير المعتمدة',totals.count),r('المبيعات شاملة الضريبة',amt(totals.sales),true),r('الخصومات',amt(totals.discount)),r('الضريبة المتضمنة',amt(totals.vat)),r('مبيعات النقد',amt(totals.cash)),r('مبيعات الشبكة',amt(totals.card)),r('مدفوعات مختلطة (عدد)',totals.mixed),r('متوسط الفاتورة',amt(totals.average)),r('عدد الأجهزة التي سجلت بيعًا',totals.terminals.length)])}
- ${stats.length?section('الأصناف الأكثر بيعًا - اليوم',productRows):''}
- <div class="receipt-note" style="font-size:10px">${esc(caution)} لا يشمل عمليات البيع التي لم تزامن بعد، ولا يُعد تقرير أرباح صافية. هذا تقرير إداري وليس فاتورة ضريبية.</div><div class="milo-shift-end">نهاية تقرير اليوم • تم تسجيل إغلاق الوردية</div></div></section>`;
+ const balanceLabel=cashDiff===0?'الصندوق متطابق':cashDiff>0?'زيادة في الصندوق':'عجز في الصندوق';
+ const caution=meta.pendingUnknown?'المبيعات اليومية وفق الفواتير المعتمدة والمتاحة عند الإغلاق. قد توجد فواتير بأجهزة أخرى لم تُزامن بعد.':'المبيعات اليومية وفق الفواتير المعتمدة والمتاحة عند الإغلاق.';
+ const title='تقرير إغلاق اليوم';
+ return `<section id="receipt" class="print-receipt milo-special-ticket milo-shift-ticket milo-day-close-ticket" data-paper="${paper}" style="--receipt-width:${paper==='58'?'54':'76'}mm;--receipt-pad:${printPrefs().margin}mm;--receipt-offset:${printPrefs().receiptOffset}mm" dir="rtl"><div class="receipt-inner">
+ <div class="receipt-head milo-close-head"><div class="milo-shift-heading">MILO <span>•</span> ميلو</div><div class="milo-close-kicker">تقرير إداري رسمي</div><h2>${title}</h2><div class="receipt-sub milo-close-store">${esc(state.settings.store_name||state.account?.storeName||'كاشير ميلو')}</div>${state.settings.address?`<div class="receipt-sub">${esc(state.settings.address)}</div>`:''}<div class="milo-close-date">${esc(day)} <span>•</span> ${esc(vDate(shift.closed_at))}</div></div>
+ <div class="milo-close-highlight"><span>إجمالي مبيعات اليوم</span><strong>${esc(amt(totals.sales))}</strong><small>شاملة ضريبة القيمة المضافة</small></div>
+ ${section('01 / بيانات الإغلاق',[r('رقم الوردية',shift.shift_id||'—'),r('الكاشير',shift.cashier||'—'),r('جهاز البيع',state.terminalName||shift.terminal||'—'),r('افتتاح الوردية',vDate(shift.opened_at)),r('إغلاق الوردية',vDate(shift.closed_at))])}
+ ${section('02 / ملخص الوردية',[r('عدد الفواتير',shift.invoice_count??0),r('مبيعات الوردية',amt(shift.total_sales),true),r('المبيعات النقدية',amt(shift.cash_sales)),r('مبيعات الشبكة',amt(shift.card_sales)),r('الخصومات',amt(shift.discount)),r('الضريبة المتضمنة',amt(shift.vat))])}
+ ${section('03 / تسوية الصندوق',[r('الرصيد الافتتاحي',amt(shift.opening_cash)),r('النقد المتوقع',amt(shift.expected_cash)),r('النقد الفعلي',amt(shift.closing_cash)),r('الفرق',amt(cashDiff),true)])}
+ <div class="milo-close-balance"><span>حالة تسوية الصندوق</span><strong>${esc(balanceLabel)}</strong></div>
+ ${section('04 / ملخص اليوم - جميع الأجهزة',[r('عدد الفواتير',totals.count),r('المبيعات شاملة الضريبة',amt(totals.sales),true),r('المبيعات النقدية',amt(totals.cash)),r('مبيعات الشبكة',amt(totals.card)),r('الخصومات',amt(totals.discount)),r('الضريبة المتضمنة',amt(totals.vat)),r('المدفوعات المختلطة (عدد)',totals.mixed),r('متوسط الفاتورة',amt(totals.average)),r('أجهزة سجلت مبيعات',totals.terminals.length)])}
+ ${stats.length?section('05 / الأصناف الأعلى مبيعًا',productRows):''}
+ <div class="milo-close-disclaimer">${esc(caution)}<br>تقرير داخلي لإقفال المبيعات وليس فاتورة ضريبية أو بيان صافي ربح.</div>
+ <div class="milo-shift-end">نهاية التقرير <span>•</span> MILO</div></div></section>`;
 }
 
 /* Catalog, stock and restaurant options */

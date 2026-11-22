@@ -62,3 +62,29 @@
 .milo-chat-rating{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:#edf8f5;font-size:12px;color:#235b55}
 .milo-chat-rating span{flex-basis:100%;font-weight:800}
 .milo-chat-rating button:hover,.milo-chat-history-item:hover{border-color:#009e9c}
+
+/* MILO Help Center — integrated knowledge base */
+.milo-help-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:9px 15px;background:#fff;border-bottom:1px solid #e6eeeb;flex-shrink:0}
+.milo-help-tabs button{font:inherit;font-size:12px;font-weight:800;padding:10px 8px;border:0;border-radius:11px;background:transparent;color:#63817b;cursor:pointer}
+.milo-help-tabs button[aria-selected="true"]{background:#e5f5f0;color:#006c68}
+.milo-help-tabs button:hover{color:#006c68}
+.milo-help-center{display:flex;flex:1;min-height:0;flex-direction:column;overflow-y:auto;background:#f7faf9;overscroll-behavior:contain}
+.milo-help-center[hidden]{display:none!important}
+.milo-help-hero{padding:24px 20px 20px;background:linear-gradient(125deg,#063c3f,#079b98);color:#fff;flex-shrink:0}
+.milo-help-eyebrow{font-size:11px;font-weight:700;color:#c6f5ef}.milo-help-hero h2{margin:9px 0 5px;font-size:19px;line-height:1.5;color:#fff}.milo-help-hero p{margin:0 0 16px;font-size:12px;color:#e0f9f5}
+.milo-help-search-wrap{display:flex;align-items:center;gap:9px;border:1px solid #dce9e6;border-radius:13px;background:#fff;color:#62827e;padding:0 12px;box-shadow:0 5px 13px rgba(0,22,22,.08)}
+.milo-help-search-icon{font-size:24px;line-height:1.8}.milo-help-search-wrap input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#183e3b;padding:12px 0;font:inherit;font-size:12px}
+.milo-help-categories{display:flex;gap:7px;overflow-x:auto;flex-shrink:0;padding:15px 15px 10px;scrollbar-width:thin}
+.milo-help-category{border:1px solid #d4e4df;border-radius:25px;background:#fff;padding:8px 12px;white-space:nowrap;font:inherit;font-size:11px;font-weight:700;color:#476b65;cursor:pointer}
+.milo-help-category.selected{background:#007d79;border-color:#007d79;color:#fff}
+.milo-help-results{padding:4px 16px 14px;display:flex;flex-direction:column;gap:9px}
+.milo-help-results-title{font-size:12px;font-weight:800;color:#264a46;margin:4px 0 3px}
+.milo-help-article{background:#fff;border:1px solid #e0eae6;border-radius:13px;overflow:hidden}
+.milo-help-article summary{list-style:none;cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.milo-help-article summary::-webkit-details-marker{display:none}.milo-help-article-text{display:flex;flex-direction:column;gap:5px;min-width:0}.milo-help-article strong{font-size:12px;color:#183d3a}.milo-help-article small{font-size:11px;color:#718a85;line-height:1.6}
+.milo-help-chevron{font-size:20px;color:#008f8b;transition:transform .15s}.milo-help-article[open] .milo-help-chevron{transform:rotate(180deg)}.milo-help-article p{border-top:1px solid #edf3f0;padding:13px 14px;margin:0;font-size:12px;line-height:2;color:#35544f}
+.milo-help-empty{padding:22px 13px;text-align:center;color:#607c76;font-size:12px}
+.milo-help-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 16px 18px;padding:13px;border:1px solid #d8eae4;border-radius:13px;background:#edf7f3;font-size:11px;color:#31544e}
+.milo-help-footer button{border:0;border-radius:9px;background:#008f8b;color:#fff;font:inherit;font-weight:800;font-size:11px;padding:10px;cursor:pointer}
+.milo-assistant-panel [hidden]{display:none!important}
+@media(max-width:600px){.milo-help-hero{padding:18px 15px}.milo-help-hero h2{font-size:17px}}

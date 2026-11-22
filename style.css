@@ -1394,3 +1394,39 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
   body > #receipt.print-receipt .modal-actions,
   body > #receipt.print-receipt .payment-actions { display:none!important; }
 }
+
+
+/* MILO — day closing roll report: monochrome professional 58/80mm printing. */
+#receipt.milo-day-close-ticket .receipt-inner{font-family:Tahoma,Arial,sans-serif!important;color:#111!important;background:#fff!important;font-size:11px!important;line-height:1.4!important;font-weight:500!important;overflow-wrap:anywhere}
+#receipt.milo-day-close-ticket .milo-close-head{border-top:3px double #111;border-bottom:2px solid #111;padding:9px 1px 10px!important;margin:0 0 9px!important;text-align:center}
+#receipt.milo-day-close-ticket .milo-shift-heading{font-size:13px!important;font-weight:900!important;letter-spacing:.6px!important;margin-bottom:4px}
+#receipt.milo-day-close-ticket .milo-close-kicker{font-size:9px;font-weight:700;letter-spacing:.2px;margin:3px 0}
+#receipt.milo-day-close-ticket .receipt-head h2{font-family:Tahoma,Arial,sans-serif!important;font-size:18px!important;line-height:1.4!important;font-weight:900!important;margin:3px 0!important;color:#111!important}
+#receipt.milo-day-close-ticket .milo-close-store{font-size:12px!important;font-weight:900!important;color:#111!important}
+#receipt.milo-day-close-ticket .milo-close-date{font-weight:700;margin-top:5px;font-size:9px;direction:rtl}
+#receipt.milo-day-close-ticket .milo-close-highlight{border:2px solid #111;padding:10px 7px;margin:0 0 11px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;break-inside:avoid}
+#receipt.milo-day-close-ticket .milo-close-highlight span{font-size:11px;font-weight:800}
+#receipt.milo-day-close-ticket .milo-close-highlight strong{font-size:21px;font-weight:900;direction:ltr;unicode-bidi:isolate;line-height:1.25}
+#receipt.milo-day-close-ticket .milo-close-highlight small{font-size:9px;font-weight:500}
+#receipt.milo-day-close-ticket .milo-shift-group{margin:8px 0 10px;break-inside:auto}
+#receipt.milo-day-close-ticket .milo-shift-group-title{font-size:11px;font-weight:900;color:#111;background:#f0f0f0;border-top:1.5px solid #111;border-bottom:1px solid #111;padding:5px 4px;margin:0 0 3px;break-after:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#receipt.milo-day-close-ticket .milo-shift-row{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:baseline;gap:5px;padding:4px 2px;border-bottom:1px dashed #bbb;font-size:10px;break-inside:avoid;page-break-inside:avoid}
+#receipt.milo-day-close-ticket .milo-shift-row span{min-width:0;flex:1;text-align:right}
+#receipt.milo-day-close-ticket .milo-shift-row b{font-weight:800;text-align:left;max-width:58%;overflow-wrap:anywhere;unicode-bidi:plaintext}
+#receipt.milo-day-close-ticket .milo-shift-row.milo-shift-em{border-top:1px solid #111;border-bottom:2px solid #111;padding:6px 2px;font-weight:900;font-size:11px}
+#receipt.milo-day-close-ticket .milo-shift-row.milo-shift-em b{font-weight:900;font-size:12px}
+#receipt.milo-day-close-ticket .milo-close-balance{border:1.5px solid #111;margin:6px 0 11px;padding:7px 6px;text-align:center;display:flex;flex-direction:column;gap:2px;break-inside:avoid}
+#receipt.milo-day-close-ticket .milo-close-balance span{font-size:9px}
+#receipt.milo-day-close-ticket .milo-close-balance strong{font-size:13px;font-weight:900}
+#receipt.milo-day-close-ticket .milo-close-disclaimer{font-size:9px;line-height:1.5;margin:11px 0 7px;text-align:right;padding:7px 2px;border-top:1px dashed #999;break-inside:avoid}
+#receipt.milo-day-close-ticket .milo-shift-end{padding:8px 0 2px;text-align:center;font-size:10px;font-weight:900;border-top:2px solid #111}
+#receipt.milo-day-close-ticket[data-paper="58"] .receipt-inner{font-size:10px!important}
+#receipt.milo-day-close-ticket[data-paper="58"] .receipt-head h2{font-size:16px!important}
+#receipt.milo-day-close-ticket[data-paper="58"] .milo-close-highlight strong{font-size:18px}
+#receipt.milo-day-close-ticket[data-paper="58"] .milo-shift-row{font-size:9px;gap:3px}
+#receipt.milo-day-close-ticket[data-paper="58"] .milo-shift-row.milo-shift-em b{font-size:10px}
+@media print{
+ #receipt.milo-day-close-ticket{padding:0!important;margin:0!important;box-shadow:none!important;border:0!important;color:#111!important}
+ #receipt.milo-day-close-ticket .milo-shift-group-title{background:#f0f0f0!important;color:#111!important}
+ #receipt.milo-day-close-ticket .milo-shift-row,#receipt.milo-day-close-ticket .milo-close-highlight,#receipt.milo-day-close-ticket .milo-close-balance{break-inside:avoid!important;page-break-inside:avoid!important}
+}
