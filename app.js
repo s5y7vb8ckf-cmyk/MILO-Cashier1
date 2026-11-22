@@ -388,6 +388,7 @@ async function checkout(){
   // Do not await printer I/O before releasing the selling screen.
   void printReceipt(invoice,false,false,true).catch(err=>toast('تعذرت الطباعة: '+err.message,true));
   renderSale();miloPaymentStatus('approved');
+  if(state.settings.restaurant_mode==='restaurant'&&!result.duplicate)toast('تم اعتماد الطلب، وسيظهر في شاشة المطبخ عند تحديثها');
   void api('products').then(x=>{if(Array.isArray(x.products)){state.products=x.products;if(state.page==='sale')renderSaleGrid()}}).catch(()=>{});
   toast(result.duplicate?'الفاتورة محفوظة مسبقًا وتم إرسال النسخة المعتمدة للطباعة':'تم اعتماد الفاتورة وإرسالها للطباعة كاملة');
  }catch(e){
