@@ -107,9 +107,10 @@ function miloDeviceAccess_(req,storeCode,register){
  }finally{lock.releaseLock();}
 }
 
-function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','getSupportConversation','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
+function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','getSupportConversation','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink','invoicePdf'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
  if(action==='login'||action==='ping')return {ok:true,account:auth.account};
  if(action==='invoiceShareLink')return miloInvoiceShareLink_(storeCode,req);
+ if(action==='invoicePdf')return miloInvoicePdfFile_(storeCode,req);
   if(action==='kitchenOrders')return miloKitchenOrders_(storeCode,req);
   if(action==='updateKitchenOrder')return miloUpdateKitchenOrder_(storeCode,req,auth.account);
   if(action==='customerOrders')return miloCustomerOrders_(storeCode);
@@ -1712,4 +1713,68 @@ function miloFinanceAction_(req){
   return {ok:true,recordId:id};
  }catch(e){return fail_('finance_validation',String(e.message||e));}
  finally{lock.releaseLock();}
+}
+
+
+// MILO PDF attachment: generates a real PDF from the authenticated store's saved invoice.
+// Does NOT send an SMS/WhatsApp message; the browser may share the PDF file via OS share sheet.
+function miloInvoicePdfFile_(storeCode,req){
+ const invoiceId=str_(req.invoiceId);
+ if(!invoiceId||invoiceId.length>150)return fail_('bad_request','رقم الفاتورة غير صحيح');
+ ensureSheet_(book_(),SHEETS.reports,REPORT_HEADERS);
+ const t=table_(SHEETS.reports);requireCols_(t,['store_code','invoice_id','date','total','items']);
+ let record=null;
+ for(let i=1;i<t.values.length;i++){
+  const row=t.values[i];
+  if(str_(col_(t,row,'store_code'))===storeCode&&str_(col_(t,row,'invoice_id'))===invoiceId){record=row;break;}
+ }
+ if(!record)return fail_('not_found','الفاتورة غير موجودة');
+ const val=k=>str_(col_(t,record,k));
+ const prefs=getStoreSettings_(storeCode);
+ const merchant=str_(prefs.store_name)||'ميلو';
+ const vat=str_(prefs.vat_number);
+ const title=/^3\d{13}3$/.test(vat)?'فاتورة ضريبية مبسطة':'فاتورة مبيعات';
+ let doc=null;
+ try{
+  doc=DocumentApp.create('MILO-INVOICE-'+invoiceId.slice(0,60));
+  const body=doc.getBody();
+  body.setMarginTop(30).setMarginBottom(30).setMarginLeft(34).setMarginRight(34);
+  const center=DocumentApp.HorizontalAlignment.CENTER;
+  const right=DocumentApp.HorizontalAlignment.RIGHT;
+  function line(s,bold,size){const p=body.appendParagraph(str_(s));p.setAlignment(right);if(bold)p.editAsText().setBold(true);if(size)p.editAsText().setFontSize(size);return p;}
+  const main=body.appendParagraph(merchant);main.setAlignment(center);main.editAsText().setBold(true).setFontSize(19);
+  const header=body.appendParagraph(title);header.setAlignment(center);header.editAsText().setBold(true).setFontSize(13);
+  line('رقم الفاتورة: '+invoiceId,true,11);
+  line('التاريخ: '+val('date'));
+  if(vat)line('الرقم الضريبي: '+vat);
+  if(prefs.address)line('العنوان: '+prefs.address);
+  if(prefs.phone)line('جوال المنشأة: '+prefs.phone);
+  if(val('customer'))line('العميل: '+val('customer'));
+  if(val('cashier'))line('الكاشير: '+val('cashier'));
+  body.appendParagraph('');
+  line('الأصناف',true,12);
+  const raw=val('items');
+  for(const item of raw.split(' | ').filter(Boolean).slice(0,300))line('• '+item);
+  body.appendParagraph('');
+  line('الإجمالي قبل الخصم: '+num_(val('subtotal')).toFixed(2)+' ر.س');
+  line('الخصم: '+num_(val('discount')).toFixed(2)+' ر.س');
+  line('ضريبة القيمة المضافة: '+num_(val('vat')).toFixed(2)+' ر.س');
+  line('الإجمالي: '+num_(val('total')).toFixed(2)+' ر.س',true,15);
+  // Tax QR is provided by the cashier (computed from invoice amounts, store and VAT).
+  // Missing QR is never silently invented. The QR's bytes are limited and validated.
+  const qr=str_(req.qrPng);
+  if(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(qr)&&qr.length<130000&&/^3\d{13}3$/.test(vat)){
+   const png=Utilities.base64Decode(qr.split(',')[1]);
+   const paragraph=body.appendParagraph('');paragraph.setAlignment(center);
+   const img=paragraph.appendInlineImage(Utilities.newBlob(png,'image/png','zatca-qr.png'));
+   img.setWidth(130).setHeight(130);
+  }
+  const foot=body.appendParagraph('شكرًا لزيارتكم');foot.setAlignment(center);
+  doc.saveAndClose();
+  const file=DriveApp.getFileById(doc.getId());
+  const pdf=file.getAs(MimeType.PDF);
+  if(pdf.getBytes().length>3500000)return fail_('too_large','ملف الفاتورة كبير جدًا');
+  return {ok:true,mimeType:'application/pdf',fileName:'MILO-Invoice-'+invoiceId.replace(/[^A-Za-z0-9_-]/g,'_').slice(0,70)+'.pdf',pdfBase64:Utilities.base64Encode(pdf.getBytes())};
+ }catch(err){return fail_('pdf_error','تعذر إنشاء ملف PDF: '+err.message);}
+ finally{if(doc){try{DriveApp.getFileById(doc.getId()).setTrashed(true);}catch(ignore){}}}
 }

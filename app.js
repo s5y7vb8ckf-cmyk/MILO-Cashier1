@@ -2633,33 +2633,83 @@ document.addEventListener('click',async event=>{
 });
 
 
-// MILO customer invoice delivery: click-to-send WhatsApp or SMS draft, no hidden messaging.
+// MILO: invoice is shared as an actual PDF file, never as a URL in the message.
 function miloNormalizeInvoicePhone_(value){
  let v=String(value||'').replace(/[\s()\-]/g,'').replace(/^\+/,'');
  if(/^05\d{8}$/.test(v))v='966'+v.slice(1);
  else if(/^5\d{8}$/.test(v))v='966'+v;
  return /^\d{9,15}$/.test(v)?v:'';
 }
+async function miloTaxQrPng_(invoice){
+ const seller=state.settings.store_name||state.account?.storeName||'ميلو';
+ const vat=String(state.settings.vat_number||state.account?.vatNumber||'');
+ if(!/^3\d{13}3$/.test(vat))return '';
+ const markup=receiptQrSvg(invoice,seller,vat);
+ const match=markup.match(/<svg\b[\s\S]*?<\/svg>/i);
+ if(!match)return '';
+ try{
+  const svg=match[0];
+  const uri='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  const img=new Image();
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=uri;});
+  const canvas=document.createElement('canvas');canvas.width=180;canvas.height=180;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,180,180);ctx.drawImage(img,0,0,180,180);
+  return canvas.toDataURL('image/png');
+ }catch{return ''}
+}
+function miloPdfFromBase64_(base64){
+ const binary=atob(base64),bytes=new Uint8Array(binary.length);
+ for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+ return new Blob([bytes],{type:'application/pdf'});
+}
+async function miloCreateInvoicePdf_(invoiceId){
+ const invoice=state.reports.find(x=>x.invoiceId===invoiceId);
+ if(!invoice)throw Error('الفاتورة غير موجودة في السجل؛ حدّث سجل الفواتير أولًا');
+ const qrPng=await miloTaxQrPng_(invoice);
+ const result=await api('invoicePdf',{invoiceId,qrPng});
+ if(!result?.pdfBase64||result.mimeType!=='application/pdf')throw Error('لم يتوفر ملف PDF');
+ const blob=miloPdfFromBase64_(result.pdfBase64);
+ const name=result.fileName||'MILO-Invoice.pdf';
+ return {blob,name,file:new File([blob],name,{type:'application/pdf'})};
+}
+function miloDownloadInvoicePdf_(pdf){
+ const url=URL.createObjectURL(pdf.blob),a=document.createElement('a');
+ a.href=url;a.download=pdf.name;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+function miloInvoiceThankYou_(invoiceId){
+ const store=String(state.settings.store_name||state.account?.storeName||'ميلو').trim();
+ return `شكرًا لتسوقكم من ${store} 🌷\nنسعد بخدمتكم ونتمنى لكم تجربة رائعة.\nمرفق لكم فاتورتكم الإلكترونية بصيغة PDF، رقم ${invoiceId}.\nنتطلع لخدمتكم مجددًا.\n${store}`;
+}
 async function miloSendInvoicePhone(invoiceId,initialPhone){
  const invoice=state.reports.find(x=>x.invoiceId===invoiceId);
  const suggested=initialPhone||invoice?.customerPhone||'';
- let share;
- try{share=await api('invoiceShareLink',{invoiceId});}
- catch(e){return toast('تعذر تجهيز رابط الفاتورة: '+e.message,true)}
- if(!share?.url)return toast('لم يتوفر رابط الفاتورة',true);
- const body=`<div class="stack"><p>أدخل جوال العميل. الإرسال عبر واتساب أو تطبيق الرسائل يتم بتأكيد منك، ولا يُرسل النظام رسائل مدفوعة تلقائيًا.</p><label>رقم الجوال<input class="input" type="tel" id="miloInvoiceSendPhone" value="${esc(suggested)}" placeholder="05xxxxxxxx" dir="ltr"></label><p>رابط الفاتورة:</p><input class="input" dir="ltr" readonly value="${esc(share.url)}"><p class="small-note">من يمتلك الرابط يستطيع مشاهدة الفاتورة؛ شاركه مع العميل فقط.</p></div>`;
- const launch=(kind)=>{
-  const phone=miloNormalizeInvoicePhone_($('miloInvoiceSendPhone')?.value);
-  if(!phone){toast('أدخل رقم جوال صحيحاً مع مفتاح الدولة',true);return;}
-  const merchant=state.settings.store_name||state.account?.storeName||'ميلو';
-  const msg=`شكرًا لتسوقك من ${merchant}\nفاتورتك رقم ${invoiceId}\n${share.url}`;
-  const url=kind==='wa'?'https://wa.me/'+phone+'?text='+encodeURIComponent(msg):'sms:+'+phone+'?body='+encodeURIComponent(msg);
-  window.open(url,'_blank','noopener,noreferrer');
+ const body=`<div class="stack"><p>إرسال الفاتورة بصيغة PDF</p><label>رقم جوال العميل<input class="input" type="tel" id="miloInvoiceSendPhone" value="${esc(suggested)}" placeholder="05xxxxxxxx" dir="ltr"></label><p class="small-note">يُرفق ملف PDF مع رسالة شكر عند مشاركة الملفات من الجهاز. على الكمبيوتر تُفتح رسالة واتساب جاهزة ويُحمّل PDF لإرفاقه يدويًا.</p></div>`;
+ const getPhone=()=>miloNormalizeInvoicePhone_($('miloInvoiceSendPhone')?.value);
+ const create=async()=>{
+  const phone=getPhone();if(!phone)throw Error('أدخل رقم جوال صحيحًا');
+  return {pdf:await miloCreateInvoicePdf_(invoiceId),phone};
  };
- showModal('إرسال الفاتورة إلى الجوال',body,[
+ const share=async()=>{
+  try{
+   const {pdf}=await create();
+   if(navigator.canShare?.({files:[pdf.file]})&&navigator.share){
+    await navigator.share({files:[pdf.file],title:'فاتورة '+invoiceId,text:miloInvoiceThankYou_(invoiceId)});
+   }else{miloDownloadInvoicePdf_(pdf);toast('تم تجهيز PDF. أرفق الملف في محادثة العميل عبر واتساب.');}
+  }catch(e){if(e?.name!=='AbortError')toast('تعذر مشاركة الفاتورة: '+e.message,true)}
+ };
+ const whats=async()=>{
+  try{
+   const {pdf,phone}=await create();miloDownloadInvoicePdf_(pdf);
+   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(miloInvoiceThankYou_(invoiceId)),'_blank','noopener,noreferrer');
+   toast('رسالة الشكر جاهزة في واتساب. أرفق ملف PDF المحمّل ثم اضغط إرسال.');
+  }catch(e){toast('تعذر تجهيز الفاتورة: '+e.message,true)}
+ };
+ const download=async()=>{try{const {pdf}=await create();miloDownloadInvoicePdf_(pdf);toast('تم تحميل الفاتورة PDF');}catch(e){toast('تعذر التحميل: '+e.message,true)}};
+ showModal('إرسال الفاتورة PDF',body,[
   {label:'إغلاق',onClick:closeModal},
-  {label:'نسخ الرابط',onClick:()=>navigator.clipboard?.writeText(share.url).then(()=>toast('تم نسخ رابط الفاتورة')).catch(()=>toast('لم ينجح نسخ الرابط',true))},
-  {label:'رسالة SMS',onClick:()=>launch('sms')},
-  {label:'إرسال واتساب',style:'primary',onClick:()=>launch('wa')}
+  {label:'تحميل PDF',onClick:download},
+  {label:'واتساب + ملف PDF',onClick:whats},
+  {label:'مشاركة PDF',style:'primary',onClick:share}
  ]);
 }
