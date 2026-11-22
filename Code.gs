@@ -23,7 +23,7 @@ const EXTRA_SCHEMAS = {
 const DEVICE_ACTIVITY_HEADERS = ['store_code','event_id','device_code','device_name','username','owner_name','event_type','occurred_at','received_at','details'];
 const DEVICE_STATUS_HEADERS = ['store_code','device_code','device_name','username','owner_name','last_open','last_close','last_seen','current_status','inactivity_alert_at','updated_at'];
 const DEVICE_ALERT_HEADERS = ['store_code','device_code','device_name','owner_name','alert_type','last_seen','alert_at','details'];
-const SUPPORT_TICKET_HEADERS = ['store_code','ticket_id','occurred_at','received_at','device_code','device_name','username','owner_name','description','error_summary','status','admin_reply','reply_at','attachment_name','attachment_url'];
+const SUPPORT_TICKET_HEADERS = ['store_code','ticket_id','occurred_at','received_at','device_code','device_name','username','owner_name','description','error_summary','status','admin_reply','reply_at','attachment_name','attachment_url','conversation_id','resolution','resolved_at'];
 const ACTIVE_VALUES = ['مفعل','مفعّل','active','1','yes','true','نعم'];
 function fail_(error,message){return {ok:false,error:error,message:message};}
 function str_(v){return v==null?'':String(v).trim();}
@@ -108,7 +108,7 @@ function miloDeviceAccess_(req,storeCode,register){
  }finally{lock.releaseLock();}
 }
 
-function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','categories','saveCategory','deleteCategory','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','getSupportConversation','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink','invoicePdf'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
+function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','categories','saveCategory','deleteCategory','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','getSupportConversation','rateSupportConversation','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink','invoicePdf'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
  if(action==='login'||action==='ping')return {ok:true,account:auth.account};
  if(action==='categories')return miloListCategories_(storeCode);
  if(action==='saveCategory')return miloSaveCategory_(storeCode,req.name);
@@ -128,6 +128,7 @@ function route_(req){const action=str_(req.action);if(action==='miloPayRelay')re
  if(action==='saveDeviceEvents')return saveDeviceEvents_(storeCode,auth.account,req.events);
  if(action==='submitSupportTicket')return submitSupportTicket_(storeCode,auth.account,req.ticket);
  if(action==='getSupportConversation')return miloSupportConversation_(storeCode,auth.account,req);
+ if(action==='rateSupportConversation')return miloRateSupportConversation_(storeCode,req);
  if(action==='products'){
   const catalog=products_(storeCode),revision=productCatalogRevision_(catalog);
   if(str_(req.ifRevision)&&str_(req.ifRevision)===revision)
@@ -811,6 +812,8 @@ function saveDeviceEvents_(storeCode,account,events){
 function submitSupportTicket_(storeCode,account,ticket){
  if(!ticket||typeof ticket!=='object'||!/^[a-f0-9-]{36}$/i.test(str_(ticket.ticketId)))return fail_('bad_request','رقم البلاغ غير صالح');
  const code=requireDeviceCode_(ticket.deviceCode),description=str_(ticket.description);
+ const conversationId=str_(ticket.conversationId);
+ if(conversationId&&!/^[a-f0-9-]{36}$/i.test(conversationId))return fail_('bad_request','معرف المحادثة غير صالح');
  if(str_(ticket.storeCode)!==storeCode)return fail_('bad_request','البلاغ تابع لمحل آخر');
  if(description.length<2||description.length>1200)return fail_('bad_request','وصف المشكلة غير كافٍ');
  const lock=LockService.getScriptLock();lock.waitLock(30000);
@@ -840,7 +843,7 @@ function submitSupportTicket_(storeCode,account,ticket){
    occurred_at:safeLimited_(ticket.occurredAt,35),received_at:now,device_code:code,
    device_name:safeLimited_(ticket.deviceName,80),username:safeLimited_(account.username,120),
    owner_name:safeLimited_(account.ownerName,150),description:safeLimited_(description,1200),
-   error_summary:safeLimited_(ticket.errorSummary,400),status:'جديد',attachment_name:attachmentName,attachment_url:attachmentUrl};
+   error_summary:safeLimited_(ticket.errorSummary,400),status:'جديد',attachment_name:attachmentName,attachment_url:attachmentUrl,conversation_id:conversationId};
   t.sh.appendRow(rowFor_(t.headers,row));return {ok:true};
  }finally{lock.releaseLock();}
 }
@@ -859,10 +862,31 @@ function miloSupportConversation_(storeCode,account,req){
   const format=v=>v instanceof Date?Utilities.formatDate(v,Session.getScriptTimeZone(),"yyyy-MM-dd'T'HH:mm:ss"):str_(v);
   entries.push({ticketId:str_(val('ticket_id')),description:str_(val('description')),
    occurredAt:format(val('occurred_at')),receivedAt:format(val('received_at')),
-   status:str_(val('status')),attachmentName:str_(val('attachment_name')),adminReply:str_(val('admin_reply')).slice(0,3000),replyAt:format(val('reply_at'))});
+   status:str_(val('status')),conversationId:str_(val('conversation_id'))||'legacy',resolution:str_(val('resolution')),resolvedAt:format(val('resolved_at')),attachmentName:str_(val('attachment_name')),adminReply:str_(val('admin_reply')).slice(0,3000),replyAt:format(val('reply_at'))});
  }
  entries.sort((a,b)=>String(a.receivedAt).localeCompare(String(b.receivedAt)));
  return {ok:true,messages:entries.slice(-100)};
+}
+
+// A cashier may evaluate their own support conversation, never one from another device/store.
+function miloRateSupportConversation_(storeCode,req){
+ const device=requireDeviceCode_(req.deviceCode),cid=str_(req.conversationId),rating=str_(req.rating);
+ if(!/^[a-f0-9-]{36}$/i.test(cid)||!['resolved','unresolved'].includes(rating))return fail_('bad_request','تقييم المحادثة غير صالح');
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+  ensureSheet_(book_(),SHEETS.supportTickets,SUPPORT_TICKET_HEADERS);
+  const t=table_(SHEETS.supportTickets);requireCols_(t,SUPPORT_TICKET_HEADERS);
+  let count=0;const now=new Date().toISOString();
+  for(let i=1;i<t.values.length;i++){
+   const row=t.values[i];
+   if(str_(col_(t,row,'store_code'))!==storeCode||str_(col_(t,row,'device_code'))!==device||str_(col_(t,row,'conversation_id'))!==cid)continue;
+   t.sh.getRange(i+1,t.idx.resolution+1).setValue(rating);
+   t.sh.getRange(i+1,t.idx.resolved_at+1).setValue(now);
+   // Do not overwrite manually managed support status or replies.
+   count++;
+  }
+  return count?{ok:true,count}:fail_('not_found','المحادثة غير موجودة');
+ }finally{lock.releaseLock();}
 }
 
 // Runs independently of cash register; it can report a device that has not connected for >48h.

@@ -50,3 +50,15 @@
 .milo-chat-file-preview[hidden]{display:none}.milo-chat-file-preview span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 .milo-chat-file-preview button{border:0;background:transparent;color:#245952;font-size:22px;cursor:pointer;padding:0 5px}
 @media(max-width:600px){.milo-assistant-panel{width:calc(100vw - 24px);height:min(660px,calc(100dvh - 95px))}.milo-assistant-messages{padding:16px 12px}}
+
+/* MILO support: conversation navigation & resolution */
+.milo-chat-nav{display:flex;gap:8px;padding:10px 15px;background:#fff;border-bottom:1px solid #edf2f0}
+.milo-chat-nav[hidden],.milo-chat-history[hidden],.milo-chat-rating[hidden]{display:none!important}
+.milo-chat-nav button,.milo-chat-rating button{font:inherit;border:1px solid #cde3df;color:#116e6b;background:#f0f9f6;border-radius:11px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:700}
+.milo-chat-nav button:first-child{background:#008f8c;color:#fff;border-color:#008f8c}
+.milo-chat-history{overflow:auto;max-height:240px;padding:12px 14px;background:#fff;border-bottom:1px solid #e5eeeb}
+.milo-chat-history-item{display:flex;flex-direction:column;gap:5px;width:100%;text-align:right;background:#f7faf9;border:1px solid #e4ece9;border-radius:12px;padding:11px;margin-bottom:8px;cursor:pointer;color:#163b39;font:inherit}
+.milo-chat-history-item small{font-size:11px;color:#6d8c87}
+.milo-chat-rating{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:#edf8f5;font-size:12px;color:#235b55}
+.milo-chat-rating span{flex-basis:100%;font-weight:800}
+.milo-chat-rating button:hover,.milo-chat-history-item:hover{border-color:#009e9c}
