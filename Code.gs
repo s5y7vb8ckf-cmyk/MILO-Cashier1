@@ -1,9 +1,10 @@
 /** Milo Cashier - قاعدة البيانات السحابية backend. Bind script to the spreadsheet. */
-const SHEETS = { accounts:'Accounts', products:'Products', reports:'Reports', shifts:'Shifts', customers:'Customers', suppliers:'Suppliers', storeSettings:'StoreSettings', expenses:'Expenses', promotions:'Promotions', employees:'Employees', returns:'Returns', purchases:'Purchases', purchaseItems:'PurchaseItems', vouchers:'Vouchers', deviceActivity:'DeviceActivity', deviceStatus:'DeviceStatus', deviceAlerts:'DeviceAlerts', supportTickets:'SupportTickets', reportDaily:'ReportDaily', deletedRecords:'DeletedRecords', customerOrders:'CustomerOrders' };
-const ACCOUNT_HEADERS = ['store_code','username','password','owner_name','store_name','vat_number','district','phone','address','subscription_end','days_left','status','notes'];
+const SHEETS = { accounts:'Accounts', products:'Products', reports:'Reports', shifts:'Shifts', customers:'Customers', suppliers:'Suppliers', storeSettings:'StoreSettings', expenses:'Expenses', promotions:'Promotions', employees:'Employees', returns:'Returns', purchases:'Purchases', purchaseItems:'PurchaseItems', vouchers:'Vouchers', deviceActivity:'DeviceActivity', deviceStatus:'DeviceStatus', deviceAlerts:'DeviceAlerts', supportTickets:'SupportTickets', reportDaily:'ReportDaily', deletedRecords:'DeletedRecords', customerOrders:'CustomerOrders', kitchenOrders:'KitchenOrders' };
+const ACCOUNT_HEADERS = ['store_code','username','password','owner_name','store_name','vat_number','district','phone','address','subscription_end','days_left','status','notes','max_devices','max_users'];
 const PRODUCT_HEADERS = ['store_code','barcode','name','price','wholesale_price','cost_price','stock','category','unit','min_stock','description','image_url','unlimited_stock','restaurant_options_json'];
 const REPORT_DAILY_HEADERS = ['store_code','report_id','device_code','report_date','invoice_count','subtotal','sales_total','vat','discount','cash','card','cost','gross_profit','top_products_json','updated_at','terminal_id','terminal_name'];
-const REPORT_HEADERS = ['store_code','invoice_id','date','cashier','customer','customer_phone','subtotal','discount','total','vat','cash','card','change','terminal','items_count','items','print_status','print_token','print_time','print_error','terminal_name','service_type'];
+const KITCHEN_HEADERS = ['store_code','invoice_id','terminal','status','updated_at','updated_by'];
+const REPORT_HEADERS = ['store_code','invoice_id','date','cashier','customer','customer_phone','subtotal','discount','total','vat','cash','card','change','terminal','items_count','items','print_status','print_token','print_time','print_error','terminal_name','service_type','invoice_share_token'];
 const SHIFT_HEADERS = ['store_code','shift_id','terminal','cashier','opened_at','closed_at','opening_cash','closing_cash','expected_cash','invoice_count','cash_sales','card_sales','total_sales','vat','discount','updated_at'];
 const CONTACT_HEADERS = ['store_code','contact_id','name','phone','address','vat_number','balance','notes','updated_at'];
 const DELETED_HEADERS = ['store_code','entity_type','record_key','deleted_at'];
@@ -34,6 +35,7 @@ function dateStr_(v){if(v instanceof Date)return Utilities.formatDate(v,Session.
 function daysLeft_(v){const s=dateStr_(v);if(!s)return null;const today=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM-dd');return Math.round((Date.parse(s+'T12:00:00Z')-Date.parse(today+'T12:00:00Z'))/86400000);}
 // Web App: public health-check remains unchanged. Mobile dashboard is gated by account login.
 function doGet(e){
+ if(e && e.parameter && String(e.parameter.invoice||'')==='1')return miloSharedInvoicePage_(e.parameter);
  if(e && e.parameter && String(e.parameter.mobile||'')==='1'){
   return HtmlService.createHtmlOutputFromFile('MobileReports')
    .addMetaTag('viewport','width=device-width, initial-scale=1, viewport-fit=cover')
@@ -51,10 +53,65 @@ function authenticate_(req){const username=str_(req.username),password=str_(req.
  if(!ACTIVE_VALUES.includes(str_(col_(t,row,'status')).toLowerCase()))return fail_('locked','الحساب مغلق. تواصل مع الإدارة');
  const days=daysLeft_(col_(t,row,'subscription_end'));if(days===null||days<0)return fail_('expired','الاشتراك منتهي أو التاريخ غير صحيح');
  const get=k=>str_(col_(t,row,k));const storeCode=get('store_code');if(!storeCode)return fail_('locked','كود المحل غير موجود');
- return {ok:true,account:{storeCode,username:get('username'),ownerName:get('owner_name'),storeName:get('store_name'),vatNumber:get('vat_number'),district:get('district'),phone:get('phone'),address:get('address'),subscriptionEnd:dateStr_(col_(t,row,'subscription_end')),daysLeft:days}};
+ return {ok:true,account:{storeCode,username:get('username'),ownerName:get('owner_name'),storeName:get('store_name'),vatNumber:get('vat_number'),district:get('district'),phone:get('phone'),address:get('address'),subscriptionEnd:dateStr_(col_(t,row,'subscription_end')),daysLeft:days,maxDevices:miloAccountLimit_(row,t,'max_devices'),maxUsers:miloAccountLimit_(row,t,'max_users')}};
 }
-function route_(req){const action=str_(req.action);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;
+// Limits: empty/zero = not configured (backward compatible); positive integers enforce caps.
+function miloAccountLimit_(row,t,key){
+ const raw=str_(col_(t,row,key));if(!raw)return 0;
+ const n=Number(raw);return Number.isSafeInteger(n)&&n>0?n:0;
+}
+function miloStoreLimit_(storeCode,key){
+ const t=table_(SHEETS.accounts);
+ for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===storeCode)
+  return miloAccountLimit_(t.values[i],t,key);
+ return 0;
+}
+// Run manually once, instead of setup(), to append only the two account headers.
+function miloInstallAccountLimits(){
+ const sh=book_().getSheetByName(SHEETS.accounts);
+ if(!sh)throw Error('ورقة Accounts غير موجودة');
+ ensureSheet_(book_(),SHEETS.accounts,ACCOUNT_HEADERS);
+ Logger.log('تمت إضافة أعمدة الحدود عند الحاجة، دون تغيير بيانات الحسابات');
+}
+
+// MILO device admission: registration happens during login under a script lock.
+// Limit 0/empty means unlimited for older accounts. Device IDs identify browser
+// installations, NOT tamper-proof physical hardware identities.
+function miloDeviceAccess_(req,storeCode,register){
+ const max=miloStoreLimit_(storeCode,'max_devices');
+ if(max<=0)return {ok:true};
+ const code=str_(req.deviceCode);
+ if(!/^MILO-[0-9A-F]{20}$/.test(code))return fail_('device_required','يجب تحديث كاشير ميلو لتسجيل الدخول بمعرّف الجهاز');
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+  ensureSheet_(book_(),SHEETS.deviceStatus,DEVICE_STATUS_HEADERS);
+  const t=table_(SHEETS.deviceStatus);requireCols_(t,DEVICE_STATUS_HEADERS);
+  let count=0,found=false;
+  for(let i=1;i<t.values.length;i++){
+   const row=t.values[i];if(str_(col_(t,row,'store_code'))!==storeCode)continue;
+   const id=str_(col_(t,row,'device_code'));
+   if(!id)continue;
+   count++;
+   if(id===code)found=true;
+  }
+  if(found)return {ok:true,registered:true,maxDevices:max,usedDevices:count};
+  const message='عذرًا، لقد تعديت عدد الأجهزة المسموح بها في حسابك. الحد المسموح: '+max+' جهاز. تواصل مع إدارة ميلو.';
+  if(!register||count>=max)return fail_('device_limit',message);
+  const now=new Date().toISOString();
+  const row={store_code:storeCode,device_code:code,
+   device_name:safeLimited_(req.deviceName||'MILO Cashier',80),
+   username:safeLimited_(req.username,120),last_open:now,last_seen:now,
+   current_status:'متصل',updated_at:now};
+  t.sh.appendRow(rowFor_(t.headers,row));
+  return {ok:true,registered:true,maxDevices:max,usedDevices:count+1};
+ }finally{lock.releaseLock();}
+}
+
+function route_(req){const action=str_(req.action);if(action==='miloPayRelay')return miloPayRelayAction_(req);if(action==='miloFinance')return miloFinanceAction_(req);if(['publicKioskCatalog','submitKioskOrder','kioskConfig','kioskToggle','kioskRotate','kioskOrders','kioskStatus','kioskComplete','kioskGetInvoice','kioskClaimPrint','kioskPrintResult','kioskRetryPrint'].includes(action))return miloKioskAction_(action,req);if(action.startsWith('admin'))return miloAdminAction_(req);if(['publicCustomerCatalog','submitCustomerOrder','publicOrderStatus'].includes(action))return miloPublicOrderAction_(action,req);if(!['login','ping','products','reports','addInvoice','saveProducts','uploadProductImage','shifts','saveShifts','customers','saveCustomers','suppliers','saveSuppliers','claimPrint','completePrint','getStoreSettings','saveStoreSettings','expenses','saveExpenses','promotions','savePromotions','employees','saveEmployees','returns','saveReturns','purchases','savePurchases','purchaseItems','savePurchaseItems','vouchers','saveVouchers','saveDeviceEvents','submitSupportTicket','saveReportDaily','reportDaily','capabilities','deleteEntity','deletedRecords','purgeInvoices','purgeReports','purgeProducts','customerOrders','updateCustomerOrder','completeCustomerOrder','getCustomerOrderInvoice','kitchenOrders','updateKitchenOrder','invoiceShareLink'].includes(action))return fail_('bad_request','طلب غير معروف');const auth=authenticate_(req);if(!auth.ok)return auth;const storeCode=auth.account.storeCode;const deviceAccess=miloDeviceAccess_(req,storeCode,action==='login');if(!deviceAccess.ok)return deviceAccess;
  if(action==='login'||action==='ping')return {ok:true,account:auth.account};
+ if(action==='invoiceShareLink')return miloInvoiceShareLink_(storeCode,req);
+  if(action==='kitchenOrders')return miloKitchenOrders_(storeCode,req);
+  if(action==='updateKitchenOrder')return miloUpdateKitchenOrder_(storeCode,req,auth.account);
   if(action==='customerOrders')return miloCustomerOrders_(storeCode);
   if(action==='updateCustomerOrder')return miloUpdateCustomerOrder_(storeCode,req);
   if(action==='completeCustomerOrder')return miloCompleteCustomerOrder_(storeCode,req,auth.account);
@@ -207,6 +264,25 @@ function saveExtraRecords_(name,schema,storeCode,records){
  const lock=LockService.getScriptLock();lock.waitLock(30000);
  try{const t=table_(name);requireCols_(t,schema.headers);const existing=new Map();
   for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===storeCode)existing.set(str_(col_(t,t.values[i],schema.id)),i+1);
+  // Enforce max_users only for new enabled employees; updates to existing records remain possible.
+  if(name===SHEETS.employees){
+   const cap=miloStoreLimit_(storeCode,'max_users');
+   if(cap>0){
+    const active=new Set();
+    for(let i=1;i<t.values.length;i++){
+     const r=t.values[i];
+     if(str_(col_(t,r,'store_code'))!==storeCode)continue;
+     const enabled=str_(col_(t,r,'enabled')).toLowerCase();
+     if(!['false','0','no','لا','معطل','مغلق'].includes(enabled))active.add(str_(col_(t,r,'record_id')));
+    }
+    for(const item of items){
+     const enabled=str_(item.enabled).toLowerCase();
+     if(['false','0','no','لا','معطل','مغلق'].includes(enabled))active.delete(item.record_id);
+     else active.add(item.record_id);
+    }
+    if(active.size>cap)return fail_('user_limit','تم بلوغ الحد المسموح للمستخدمين: '+cap);
+   }
+  }
   const append=[];for(const item of items){const vals=t.headers.map(h=>item[h]===undefined?'':item[h]);
    if(existing.has(item[schema.id]))t.sh.getRange(existing.get(item[schema.id]),1,1,vals.length).setValues([vals]);else append.push(vals);
   }
@@ -259,9 +335,42 @@ function saveEntities_(name,headers,storeCode,incoming,idField,keyFields){
   SpreadsheetApp.flush();return {ok:true,added,updated,skipped,count:items.length};
  }finally{lock.releaseLock();}
 }
-function products_(storeCode){const t=table_(SHEETS.products);requireCols_(t,['store_code','barcode','name','price']);const out=new Map();
+
+// Product-sheet rollover within the same spreadsheet. Workbook quotas still apply.
+const MILO_PRODUCT_ROWS_PER_SHEET_=20000;
+function miloProductTables_(){
+ const ss=book_();return ss.getSheets().filter(sh=>/^Products(?:_[2-9][0-9]*)?$/.test(sh.getName()))
+  .sort((a,b)=>miloProductSheetNumber_(a.getName())-miloProductSheetNumber_(b.getName()))
+  .map(sh=>table_(sh.getName()));
+}
+function miloProductSheetNumber_(name){return name==='Products'?1:Number(name.slice(9));}
+function miloProductWriteTable_(){
+ const ts=miloProductTables_();if(!ts.length)throw Error('ورقة Products غير موجودة');
+ const last=ts[ts.length-1];requireCols_(last,PRODUCT_HEADERS);
+ if(last.sh.getLastRow()-1<MILO_PRODUCT_ROWS_PER_SHEET_)return last;
+ const next='Products_'+(miloProductSheetNumber_(last.sh.getName())+1);
+ ensureSheet_(book_(),next,PRODUCT_HEADERS);
+ return table_(next);
+}
+function miloFindProductRow_(store,barcode){
+ for(const t of miloProductTables_())for(let i=1;i<t.values.length;i++)
+  if(str_(col_(t,t.values[i],'store_code'))===store&&str_(col_(t,t.values[i],'barcode'))===barcode)
+   return {t,row:i+1,values:t.values[i]};
+ return null;
+}
+function miloProductStockDeduct_(store,items){
+ const sums={};for(const it of items){const b=str_(it.barcode),q=num_(it.qty);if(b&&q>0)sums[b]=(sums[b]||0)+q;}
+ for(const [barcode,qty] of Object.entries(sums)){
+  const found=miloFindProductRow_(store,barcode);if(!found)continue;
+  if(['1','true','yes','نعم'].includes(str_(col_(found.t,found.values,'unlimited_stock')).toLowerCase()))continue;
+  found.t.sh.getRange(found.row,found.t.idx.stock+1).setValue(Math.max(0,num_(col_(found.t,found.values,'stock'))-qty));
+ }
+}
+function miloProductStorageStatus(){return miloProductTables_().map(t=>({sheet:t.sh.getName(),products:t.values.length-1}));}
+
+function products_(storeCode){const out=new Map();
  const deleted=deletedKeys_(storeCode,'product');
- for(let r=1;r<t.values.length;r++){
+ for(const t of miloProductTables_()){requireCols_(t,['store_code','barcode','name','price']);for(let r=1;r<t.values.length;r++){
   const v=t.values[r],barcode=str_(col_(t,v,'barcode'));
   if(str_(col_(t,v,'store_code'))!==storeCode||!barcode||!str_(col_(t,v,'name'))||
     deleted.has(barcode)||out.has(barcode))continue;
@@ -274,7 +383,7 @@ function products_(storeCode){const t=table_(SHEETS.products);requireCols_(t,['s
    unlimitedStock:['1','true','yes','نعم'].includes(str_(col_(t,v,'unlimited_stock')).toLowerCase()),
    restaurantOptionsJson:str_(col_(t,v,'restaurant_options_json'))});
  }
- return Array.from(out.values());
+ }return Array.from(out.values());
 }
 // Stable store-specific digest: if unchanged, the second terminal downloads NO catalog.
 // No extra columns and no product duplication. Local edits still queue on save.
@@ -296,23 +405,19 @@ function saveProducts_(storeCode, incoming){
  }
  const lock=LockService.getScriptLock();lock.waitLock(30000);
  try{
-  const t=table_(SHEETS.products);requireCols_(t,PRODUCT_HEADERS);
   const deleted=deletedKeys_(storeCode,'product');
-  const existing=new Map();
-  for(let i=1;i<t.values.length;i++) if(str_(col_(t,t.values[i],'store_code'))===storeCode){const bc=str_(col_(t,t.values[i],'barcode'));if(bc&&!existing.has(bc))existing.set(bc,i+1);}
-  let added=0,updated=0,skipped=0;const append=[];
+  let added=0,updated=0,skipped=0;
   for(const item of validated){
    if(deleted.has(item.barcode)){skipped++;continue;}
-   const previousRow=existing.has(item.barcode)?t.values[existing.get(item.barcode)-1]:null;
-   const vals=t.headers.map((h,i)=>item[h]===undefined?(previousRow?previousRow[i]:''):item[h]);
-   if(existing.has(item.barcode)){
-    if(vals.some((v,j)=>String(v??'')!==String(previousRow[j]??''))){
-     t.sh.getRange(existing.get(item.barcode),1,1,vals.length).setValues([vals]);updated++;
-    }else skipped++;
-   }
-   else {append.push(vals);added++;}
+   const found=miloFindProductRow_(storeCode,item.barcode);
+   const t=found?found.t:miloProductWriteTable_();requireCols_(t,PRODUCT_HEADERS);
+   const old=found?found.values:null;
+   const vals=t.headers.map((h,i)=>item[h]===undefined?(old?old[i]:''):item[h]);
+   if(found){
+    if(vals.some((v,j)=>String(v??'')!==String(old[j]??''))){t.sh.getRange(found.row,1,1,vals.length).setValues([vals]);updated++;}
+    else skipped++;
+   }else{t.sh.appendRow(vals);added++;}
   }
-  if(append.length) t.sh.getRange(t.sh.getLastRow()+1,1,append.length,t.headers.length).setValues(append);
   SpreadsheetApp.flush();return {ok:true,added,updated,skipped,count:validated.length};
  }finally{lock.releaseLock();}
 }
@@ -349,13 +454,12 @@ function deleteEntity_(storeCode,entityType,recordId){
      t.sh.appendRow(t.headers.map(h=>({store_code:storeCode,entity_type:kind,record_key:key,deleted_at:ts}[h]||'')));
      SpreadsheetApp.flush();
    }
-   const t=table_(target.name);requireCols_(t,['store_code',target.column]);
+   const tables=kind==='product'?miloProductTables_():[table_(target.name)];
    let removed=0;
-   for(let i=t.values.length-1;i>=1;i--){
-     const v=t.values[i];
-     if(str_(col_(t,v,'store_code'))===storeCode&&str_(col_(t,v,target.column))===key){
-       t.sh.deleteRow(i+1);removed++;
-     }
+   for(const t of tables){requireCols_(t,['store_code',target.column]);
+    for(let i=t.values.length-1;i>=1;i--){const v=t.values[i];
+     if(str_(col_(t,v,'store_code'))===storeCode&&str_(col_(t,v,target.column))===key){t.sh.deleteRow(i+1);removed++;}
+    }
    }
    return {ok:true,deleted:true,count:removed};
  }finally{lock.releaseLock();}
@@ -369,14 +473,58 @@ function reports_(storeCode,from,to){ensureSheet_(book_(),SHEETS.reports,REPORT_
 function addInvoice_(storeCode,inv,skipStockDeduction){ensureSheet_(book_(),SHEETS.reports,REPORT_HEADERS);const id=str_(inv.invoiceId),terminal=str_(inv.terminal);if(!id)throw Error('رقم الفاتورة ناقص');const lock=LockService.getScriptLock();lock.waitLock(25000);try{
  const t=table_(SHEETS.reports);requireCols_(t,['store_code','invoice_id']);for(let i=1;i<t.values.length;i++){const v=t.values[i];if(str_(col_(t,v,'store_code'))===storeCode&&str_(col_(t,v,'invoice_id'))===id&&str_(col_(t,v,'terminal'))===terminal)return false;}
  const items=Array.isArray(inv.items)?inv.items:[];if(items.length>500)throw Error('عدد المنتجات كبير جدًا');
- const values={store_code:storeCode,invoice_id:id,date:str_(inv.date),cashier:str_(inv.cashier),customer:str_(inv.customer),customer_phone:str_(inv.customerPhone),subtotal:num_(inv.subtotal),discount:num_(inv.discount),total:num_(inv.total),vat:num_(inv.vat),cash:num_(inv.cash),card:num_(inv.card),change:num_(inv.change),terminal,terminal_name:safeCell_(str_(inv.terminalName).slice(0,80)),items_count:items.length,items:items.map(it=>str_(it.name)+' ×'+num_(it.qty)+' = '+num_(it.total)).join(' | '),service_type:safeCell_(str_(inv.serviceType||''))};
+ const values={store_code:storeCode,invoice_id:id,date:str_(inv.date),cashier:str_(inv.cashier),customer:str_(inv.customer),customer_phone:str_(inv.customerPhone),subtotal:num_(inv.subtotal),discount:num_(inv.discount),total:num_(inv.total),vat:num_(inv.vat),cash:num_(inv.cash),card:num_(inv.card),change:num_(inv.change),terminal,terminal_name:safeCell_(str_(inv.terminalName).slice(0,80)),items_count:items.length,items:items.map(it=>str_(it.name)+' ×'+num_(it.qty)+' = '+num_(it.total)).join(' | '),service_type:safeCell_(str_(inv.serviceType||'')),invoice_share_token:Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'')};
  t.sh.appendRow(t.headers.map(h=>values[h]===undefined?'':values[h]));
  // The terminal already decremented local stock and queued an absolute stock value.
  // Avoid deducting again for synced invoices and historical backfill.
- if(!skipStockDeduction){const p=table_(SHEETS.products);if(p.idx.store_code!==undefined&&p.idx.barcode!==undefined&&p.idx.stock!==undefined){const rowOf={};for(let r=1;r<p.values.length;r++)if(str_(col_(p,p.values[r],'store_code'))===storeCode)rowOf[str_(col_(p,p.values[r],'barcode'))]=r;
- const sums={};items.forEach(it=>{const bc=str_(it.barcode),q=num_(it.qty);if(bc&&q>0&&rowOf[bc]!==undefined)sums[bc]=(sums[bc]||0)+q;});Object.keys(sums).forEach(bc=>{const r=rowOf[bc],nv=Math.max(0,num_(col_(p,p.values[r],'stock'))-sums[bc]);p.sh.getRange(r+1,p.idx.stock+1).setValue(nv);});}}
+ if(!skipStockDeduction)miloProductStockDeduct_(storeCode,items);
  return true;
  }finally{lock.releaseLock();}}
+// Restaurant kitchen: cloud-synchronized statuses. Never creates an invoice or changes inventory.
+function miloKitchenMode_(store){return str_(getStoreSettings_(store).restaurant_mode)==='restaurant';}
+function miloKitchenOrders_(store,req){
+ if(!miloKitchenMode_(store))return fail_('restaurant_disabled','فعّل وضع المطعم من إعدادات المتجر');
+ const day=str_(req.day)||Utilities.formatDate(new Date(),'Asia/Riyadh','yyyy-MM-dd');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return fail_('bad_request','تاريخ الطلب غير صحيح');
+ const report=reports_(store,day,day);
+ ensureSheet_(book_(),SHEETS.kitchenOrders,KITCHEN_HEADERS);
+ const t=table_(SHEETS.kitchenOrders),statuses=new Map();
+ for(let i=1;i<t.values.length;i++){
+  const r=t.values[i];if(str_(col_(t,r,'store_code'))!==store)continue;
+  statuses.set(str_(col_(t,r,'invoice_id'))+'::'+str_(col_(t,r,'terminal')),{status:str_(col_(t,r,'status')),updatedAt:str_(col_(t,r,'updated_at'))});
+ }
+ const orders=report.filter(r=>['محلي','سفري'].includes(str_(r.serviceType))).map(r=>{
+  const state=statuses.get(r.invoiceId+'::'+r.terminal)||{};
+  return {orderId:r.invoiceId,invoiceId:r.invoiceId,terminal:r.terminal,createdAt:r.date,customerName:r.customer||r.serviceType,
+    serviceType:r.serviceType,items:r.items,total:r.total,status:state.status||'جديد',updatedAt:state.updatedAt||r.date};
+ });
+ return {ok:true,orders};
+}
+function miloUpdateKitchenOrder_(store,req,account){
+ if(!miloKitchenMode_(store))return fail_('restaurant_disabled','وضع المطعم غير مفعل');
+ const invoiceId=str_(req.invoiceId),terminal=str_(req.terminal),status=str_(req.status);
+ if(!invoiceId||invoiceId.length>150||!terminal||terminal.length>150||!['قيد التجهيز','جاهز للاستلام'].includes(status))return fail_('bad_request','بيانات حالة الطلب غير صحيحة');
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+  const rt=table_(SHEETS.reports);
+  let exists=false;
+  for(let i=1;i<rt.values.length;i++){
+   const row=rt.values[i];
+   if(str_(col_(rt,row,'store_code'))===store&&str_(col_(rt,row,'invoice_id'))===invoiceId&&str_(col_(rt,row,'terminal'))===terminal&&['سفري','محلي'].includes(str_(col_(rt,row,'service_type')))){exists=true;break;}
+  }
+  if(!exists)return fail_('not_found','فاتورة مطعم غير موجودة في متجرك');
+  ensureSheet_(book_(),SHEETS.kitchenOrders,KITCHEN_HEADERS);
+  const t=table_(SHEETS.kitchenOrders);let rowNum=0,previous='جديد';
+  for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===store&&str_(col_(t,t.values[i],'invoice_id'))===invoiceId&&str_(col_(t,t.values[i],'terminal'))===terminal){rowNum=i+1;previous=str_(col_(t,t.values[i],'status'));break;}
+  if(previous===status)return {ok:true,status,duplicate:true};
+  if((previous==='جديد'&&status!=='قيد التجهيز')||(previous==='قيد التجهيز'&&status!=='جاهز للاستلام')||previous==='جاهز للاستلام')return fail_('invalid_transition','تغيرت حالة الطلب؛ حدّث الشاشة ثم حاول مجددًا');
+  const data={store_code:store,invoice_id:invoiceId,terminal,status,updated_at:new Date().toISOString(),updated_by:safeLimited_(account.username,100)};
+  const vals=t.headers.map(h=>data[h]||'');
+  if(rowNum)t.sh.getRange(rowNum,1,1,vals.length).setValues([vals]);else t.sh.appendRow(vals);
+  return {ok:true,status};
+ }finally{lock.releaseLock();}
+}
+
 // Queue control: manual rows must include store_code and invoice_id; only literal طباعة/PENDING triggers printing.
 function ensurePrintColumns_(){
  const sh=book_().getSheetByName(SHEETS.reports);if(!sh)throw Error('ورقة Reports غير موجودة');
@@ -424,7 +572,7 @@ function completePrint_(storeCode,req){
 // This helper only removes trailing EMPTY grid space after the last data/formula
 // cell. It NEVER touches occupied rows/columns or invoice/product records.
 // Note: formatting / validations on unused trailing cells may be removed.
-const MILO_WORKBOOK_CELL_LIMIT_ = 20000000;
+const MILO_WORKBOOK_CELL_LIMIT_ = 10000000;
 function miloAllocatedCellCount_(ss){
  return ss.getSheets().reduce((total,tab)=>total+tab.getMaxRows()*tab.getMaxColumns(),0);
 }
@@ -480,14 +628,68 @@ function miloMakeRoomForColumns_(ss,target,extraCols){
   }
  }
  if(shortage()>0)
-  throw Error('قاعدة البيانات ممتلئة (20 مليون خلية) حتى بعد فحص الصفوف الفارغة؛ '
+  throw Error('قاعدة البيانات ممتلئة (10 ملايين خلية) حتى بعد فحص الصفوف الفارغة؛ '
    +'شغّل miloWorkbookCapacityReport لمعرفة الأوراق الكبيرة، '
    +'ثم انقل السجلات القديمة إلى ملف أرشيف منفصل بعد أخذ نسخة احتياطية. لم يتم حذف بيانات.');
 }
+// MILO SAFE FIX (2026-11): the default blank Google sheet allocates
+// approximately 1,000 rows x 26 columns. Reserve that space before inserting.
+// Only trailing rows/columns AFTER existing data or formulas are removed.
+// Existing account, sale, product, and invoice cells are never touched.
+// Formatting / validation on unused trailing grid cells may be lost.
+function miloReserveCellsForNewSheet_(ss,newSheetName){
+ const capacity=1000*26;
+ const shortage=()=>miloAllocatedCellCount_(ss)+capacity-MILO_WORKBOOK_CELL_LIMIT_;
+ if(shortage()<=0)return;
+ const tabs=ss.getSheets();
+ // Try unused trailing ROWS first. Keep a minimum 100 rows and at least
+ // 25 free rows beyond the last content row to support new transactions.
+ const rowCandidates=tabs.map(tab=>{
+  const rows=tab.getMaxRows(),cols=tab.getMaxColumns();
+  const keep=Math.max(100,tab.getLastRow()+25);
+  const spare=Math.max(0,rows-keep);
+  return {tab,spare,potential:spare*cols};
+ }).sort((a,b)=>b.potential-a.potential);
+ for(const candidate of rowCandidates){
+  if(shortage()<=0)break;
+  const tab=candidate.tab;
+  const n=Math.min(candidate.spare,Math.ceil(shortage()/tab.getMaxColumns()));
+  if(n<=0)continue;
+  const start=tab.getMaxRows()-n+1;
+  try{
+   tab.deleteRows(start,n);
+   Logger.log('MILO: تحرير '+n+' صفوف شبكة فارغة من '+tab.getName());
+  }catch(err){Logger.log('MILO: لم يمكن تحرير صفوف '+tab.getName()+': '+err.message);}
+ }
+ // Then try unused trailing COLUMNS; preserve every used column + one spare.
+ if(shortage()>0){
+  const colCandidates=tabs.map(tab=>{
+   const keep=Math.max(2,tab.getLastColumn()+1);
+   const spare=Math.max(0,tab.getMaxColumns()-keep);
+   return {tab,spare,potential:spare*tab.getMaxRows()};
+  }).sort((a,b)=>b.potential-a.potential);
+  for(const candidate of colCandidates){
+   if(shortage()<=0)break;
+   const tab=candidate.tab;
+   const n=Math.min(candidate.spare,Math.ceil(shortage()/tab.getMaxRows()));
+   if(n<=0)continue;
+   const start=tab.getMaxColumns()-n+1;
+   try{
+    tab.deleteColumns(start,n);
+    Logger.log('MILO: تحرير '+n+' أعمدة شبكة فارغة من '+tab.getName());
+   }catch(err){Logger.log('MILO: لم يمكن تحرير أعمدة '+tab.getName()+': '+err.message);}
+  }
+ }
+ if(shortage()>0){
+  throw Error('تعذر إنشاء الورقة '+newSheetName+'؛ اقترب الملف من حد 10 ملايين خلية ولا توجد شبكة فارغة كافية. شغّل miloWorkbookCapacityReport. لم تُمسح سجلات المبيعات أو الحسابات.');
+ }
+ Logger.log('MILO: تم توفير مساحة آمنة قبل إنشاء الورقة '+newSheetName);
+}
+
 // Non-destructive schema upgrade: match columns by header name, never rewrite or reorder existing ones.
 function ensureSheet_(ss,name,headers){
  let sh=ss.getSheetByName(name);
- if(!sh)sh=ss.insertSheet(name);
+ if(!sh){miloReserveCellsForNewSheet_(ss,name);sh=ss.insertSheet(name);}
  const existing=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getValues()[0].map(str_);
  const hasHeaders=existing.some(h=>h!=='');
  if(!hasHeaders){
@@ -520,7 +722,7 @@ function ensureSheet_(ss,name,headers){
 function setup(){
  const ss=book_();
  for(const [name,headers] of [[SHEETS.accounts,ACCOUNT_HEADERS],[SHEETS.products,PRODUCT_HEADERS],
- [SHEETS.reports,REPORT_HEADERS],[SHEETS.customerOrders,MILO_CUSTOMER_ORDER_HEADERS],[SHEETS.reportDaily,REPORT_DAILY_HEADERS],[SHEETS.shifts,SHIFT_HEADERS],[SHEETS.customers,CONTACT_HEADERS],
+ [SHEETS.reports,REPORT_HEADERS],[SHEETS.kitchenOrders,KITCHEN_HEADERS],[SHEETS.customerOrders,MILO_CUSTOMER_ORDER_HEADERS],[SHEETS.reportDaily,REPORT_DAILY_HEADERS],[SHEETS.shifts,SHIFT_HEADERS],[SHEETS.customers,CONTACT_HEADERS],
  [SHEETS.suppliers,CONTACT_HEADERS],[SHEETS.deletedRecords,DELETED_HEADERS],[SHEETS.storeSettings,STORE_SETTING_HEADERS],
  [SHEETS.deviceActivity,DEVICE_ACTIVITY_HEADERS],[SHEETS.deviceStatus,DEVICE_STATUS_HEADERS],
  [SHEETS.deviceAlerts,DEVICE_ALERT_HEADERS],[SHEETS.supportTickets,SUPPORT_TICKET_HEADERS],
@@ -557,6 +759,20 @@ function saveDeviceEvents_(storeCode,account,events){
   const seen=new Set(a.values.slice(1).filter(r=>str_(col_(a,r,'store_code'))===storeCode).map(r=>str_(col_(a,r,'event_id'))));
   const index=new Map();for(let i=1;i<s.values.length;i++)if(str_(col_(s,s.values[i],'store_code'))===storeCode)
     index.set(str_(col_(s,s.values[i],'device_code')),i+1);
+  // Validate the complete batch before writing any events; never count login attempts.
+  const cap=miloStoreLimit_(storeCode,'max_devices');
+  if(cap>0){
+   const registered=new Set(index.keys());
+   for(const e of events){
+    if(!e||typeof e!=='object')return fail_('bad_request','حدث جهاز غير صحيح');
+    if(str_(e.storeCode)!==storeCode)return fail_('bad_request','حدث تابع لمحل آخر');
+    const code=requireDeviceCode_(e.deviceCode);
+    if(!['open','close','heartbeat'].includes(str_(e.eventType)))return fail_('bad_request','نوع حدث غير معروف');
+    // A close event does not register a new device.
+    if(str_(e.eventType)!=='close')registered.add(code);
+   }
+   if(registered.size>cap)return fail_('device_limit','تم بلوغ الحد المسموح للأجهزة: '+cap);
+  }
   const now=new Date().toISOString();let accepted=0;
   for(const e of events){
    if(!e||typeof e!=='object'||!/^[a-f0-9-]{36}$/i.test(str_(e.eventId)))return fail_('bad_request','معرف حدث غير صحيح');
@@ -571,6 +787,7 @@ function saveDeviceEvents_(storeCode,account,events){
     a.sh.appendRow(rowFor_(a.headers,row));seen.add(str_(e.eventId));accepted++;
    }
    const pos=index.get(code);
+   if(kind==='close'&&!pos)continue;
    const prior=pos?s.sh.getRange(pos,1,1,s.headers.length).getValues()[0]:null;
    const get=h=>prior?str_(col_(s,prior,h)):'';
    // Use received time as last_seen to avoid a stale clock or old offline events triggering a false inactivity alert.
@@ -757,20 +974,22 @@ function miloPurgeStoreData_(action,account,req){
  const lock=LockService.getScriptLock();
  if(!lock.tryLock(30000))return fail_('busy','قاعدة البيانات مشغولة');
  try{
-  const ss=book_(),sh=ss.getSheetByName(type.sheet);
-  if(!sh)return fail_('missing_sheet','الجدول غير موجود؛ لم يتم حذف بيانات');
-  const t=table_(type.sheet);requireCols_(t,['store_code']);
-  const rows=[];
-  for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===storeCode)rows.push(i+1);
-  if(!rows.length)return {ok:true,deleted:true,scopeVerified:true,deletedCount:0};
+  const ss=book_();
+  const tables=action==='purgeProducts'?miloProductTables_():[table_(type.sheet)];
+  const targets=tables.map(t=>{requireCols_(t,['store_code']);const rows=[];for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'store_code'))===storeCode)rows.push(i+1);return {t,rows};});
+  if(!targets.some(x=>x.rows.length))return {ok:true,deleted:true,scopeVerified:true,deletedCount:0};
   // Automatic full-spreadsheet backup. Abort if this fails.
   let backup;
   try{const stamp=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyyMMdd_HHmmss');backup=DriveApp.getFileById(ss.getId()).makeCopy('MILO_BACKUP_BEFORE_'+action+'_'+stamp);}
   catch(e){console.error('Backup failed: '+e.message);return fail_('backup_failed','تعذر إنشاء النسخة الاحتياطية؛ لم يتم حذف شيء');}
-  let count=0,upper=rows[rows.length-1],lower=upper;
-  const remove=()=>{sh.deleteRows(lower,upper-lower+1);count+=upper-lower+1;};
-  for(let i=rows.length-2;i>=0;i--){if(rows[i]===lower-1){lower=rows[i];continue;}remove();upper=lower=rows[i];}
-  remove();SpreadsheetApp.flush();
+  let count=0;
+  for(const {t,rows} of targets){if(!rows.length)continue;const sh=t.sh;
+   let upper=rows[rows.length-1],lower=upper;
+   const remove=()=>{sh.deleteRows(lower,upper-lower+1);count+=upper-lower+1;};
+   for(let i=rows.length-2;i>=0;i--){if(rows[i]===lower-1){lower=rows[i];continue;}remove();upper=lower=rows[i];}
+   remove();
+  }
+  SpreadsheetApp.flush();
   return {ok:true,deleted:true,scopeVerified:true,deletedCount:count,backupUrl:backup.getUrl(),sheet:type.sheet};
  }catch(e){console.error('Purge error: '+e.message);return fail_('purge_failed','قد يكون الحذف جزئيًا؛ راجع الجدول والنسخة الاحتياطية قبل إعادة المحاولة');}
  finally{lock.releaseLock();}
@@ -794,7 +1013,7 @@ function miloPublicOrderAction_(action,req){
  const account=miloOrderPublicStore_(req);
  if(!account)return fail_('not_available','المتجر غير متاح لاستقبال الطلبات');
  const store=account.store;
- if(action==='publicCustomerCatalog')return {ok:true,storeName:account.settings.store_name||'متجر ميلو',products:products_(store).filter(p=>p.unlimitedStock||p.stock>0).map(p=>({barcode:p.barcode,name:p.name,price:p.price,category:p.category,description:p.description,imageUrl:p.imageUrl}))};
+ if(action==='publicCustomerCatalog')return {ok:true,storeName:account.settings.store_name||'متجر ميلو',products:products_(store).filter(p=>p.unlimitedStock||p.stock>0).map(p=>({barcode:p.barcode,name:p.name,price:p.price,category:p.category,description:p.description,imageUrl:p.imageUrl,stock:p.stock,unlimitedStock:p.unlimitedStock}))};
  if(action==='publicOrderStatus'){
   const id=str_(req.orderId),phone=str_(req.customerPhone);if(!id||!phone)return fail_('bad_request','بيانات الطلب ناقصة');
   const t=table_(SHEETS.customerOrders);
@@ -889,12 +1108,7 @@ function miloCompleteCustomerOrder_(store,req,account){
    SpreadsheetApp.flush();
    // The invoice's presence is the stock-deduction idempotency marker.
    // If deduction fails, manual inventory reconciliation may be necessary.
-   const productTable=table_(SHEETS.products);
-   for(const it of invoice.items){const p=catalog.get(it.barcode);if(p.unlimitedStock)continue;
-    for(let j=1;j<productTable.values.length;j++)if(str_(col_(productTable,productTable.values[j],'store_code'))===store&&str_(col_(productTable,productTable.values[j],'barcode'))===it.barcode){
-     productTable.sh.getRange(j+1,productTable.idx.stock+1).setValue(Math.max(0,num_(col_(productTable,productTable.values[j],'stock'))-it.qty));break;
-    }
-   }
+   miloProductStockDeduct_(store,invoice.items);
   }
   orders.sh.getRange(rowNumber,orders.idx.invoice_id+1).setValue(invoiceId);
   orders.sh.getRange(rowNumber,orders.idx.payment_method+1).setValue(method);
@@ -942,4 +1156,420 @@ function miloUploadProductImage_(storeCode,req){
   try{file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW)}catch(e){file.setTrashed(true);return fail_('photo_permissions','تعذر السماح بعرض الصورة بواسطة رابط عام. تحقق من إعدادات مشاركة Google Drive.')}
   return {ok:true,imageUrl:'https://drive.google.com/thumbnail?id='+encodeURIComponent(file.getId())+'&sz=w800'};
  }catch(e){return fail_('photo_upload_failed','تعذر رفع صورة المنتج إلى Google Drive: '+e.message)}
+}
+
+// === MILO ADMIN: included in this Code.gs (do not keep another AdminBackend.gs) ===
+/** MILO ADMIN API — shared Accounts login.
+ *  Install in the EXISTING Apps Script spreadsheet-bound project as AdminBackend.gs.
+ *  Existing Code.gs must stay untouched. Authentication uses authenticate_() from Code.gs.
+ *  Login looks up username and password by the Accounts table header names (B and C).
+ */
+const MILO_ADMIN_SESS_SECONDS=21600;
+const MILO_ADMIN_RECORDS={
+ customers:{sheet:'customers',id:'contact_id',fields:['name','phone','address','notes']},
+ suppliers:{sheet:'suppliers',id:'contact_id',fields:['name','phone','address','notes']},
+ employees:{sheet:'employees',id:'record_id',fields:['name','username','role','enabled']},
+ expenses:{sheet:'expenses',id:'record_id',fields:['date','category','description','amount','payment_method','created_by']},
+ promotions:{sheet:'promotions',id:'record_id',fields:['name','discount_type','discount_value','barcode','start_date','end_date','enabled']},
+ purchases:{sheet:'purchases',id:'record_id',fields:['supplier_id','supplier_name','invoice_number','date','total']},
+ returns:{sheet:'returns',id:'record_id',fields:['invoice_id','date','items','total','reason','refund_method','created_by']},
+ vouchers:{sheet:'vouchers',id:'record_id',fields:['kind','contact_type','contact_id','contact_name','date','amount','reference','notes']}
+};
+function miloAdminDigest_(str){return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,str,Utilities.Charset.UTF_8)).replace(/=+$/,'');}
+function miloAdminTokenKey_(token){return 'milo-adm:'+miloAdminDigest_(token).slice(0,48);}
+// Admin login uses Accounts: username (column B), password (column C).
+// Authentication stays on the server. No passwords are sent back to the browser.
+function miloAdminLogin_(req){
+ const username=str_(req.username),password=String(req.password||'');
+ if(!username||!password)return fail_('bad_credentials','أدخل اسم المستخدم وكلمة المرور');
+ const verified=authenticate_({username:username,password:password});
+ if(!verified.ok)return verified;
+ const account=verified.account,store=account.storeCode;
+ const token=Utilities.getUuid()+Utilities.getUuid();
+ const session={store:store,username:account.username.toLowerCase(),
+  fingerprint:miloAdminDigest_(store+'|'+account.username.toLowerCase()+'|'+password)};
+ CacheService.getScriptCache().put(miloAdminTokenKey_(token),JSON.stringify(session),MILO_ADMIN_SESS_SECONDS);
+ return {ok:true,token:token,storeCode:store,username:account.username,
+  storeName:account.storeName,expiresIn:MILO_ADMIN_SESS_SECONDS};
+}
+function miloAdminAuth_(req){
+ const token=str_(req.token);
+ if(!/^[0-9a-f-]{72}$/i.test(token))return null;
+ const cache=CacheService.getScriptCache(),raw=cache.get(miloAdminTokenKey_(token));
+ if(!raw)return null;
+ try{
+  const session=JSON.parse(raw);
+  if(!session||!session.store||!session.username||!session.fingerprint)return null;
+  const t=table_(SHEETS.accounts);
+  const acc=t.values.slice(1).find(r=>str_(col_(t,r,'store_code'))===session.store&&
+   str_(col_(t,r,'username')).toLowerCase()===session.username);
+  if(!acc||!ACTIVE_VALUES.includes(str_(col_(t,acc,'status')).toLowerCase())||
+     daysLeft_(col_(t,acc,'subscription_end'))===null||
+     daysLeft_(col_(t,acc,'subscription_end'))<0)return null;
+  const fingerprint=miloAdminDigest_(session.store+'|'+session.username+'|'+String(col_(t,acc,'password')));
+  if(fingerprint!==session.fingerprint){cache.remove(miloAdminTokenKey_(token));return null;}
+  return session;
+ }catch(_){return null;}
+}
+function miloAdminAction_(req){
+ const action=str_(req.action);
+ // Public, data-free compatibility check used by MILO ADMIN mobile diagnostics.
+ if(action==='adminVersion')return {ok:true,service:'MILO_ADMIN',version:'2026.11.15.mobile-v5',authSource:'Accounts'};
+ if(action==='adminLogin')return miloAdminLogin_(req);
+ const auth=miloAdminAuth_(req);if(!auth)return fail_('admin_unauthorized','انتهت جلسة الإدارة. سجل الدخول مرة أخرى');
+ const store=auth.store;
+ if(action==='adminPing')return {ok:true,username:auth.username,storeCode:store};
+ // Published CSV is intentionally disabled: authenticated store data comes directly from Sheets.
+ if(action==='adminLogout'){CacheService.getScriptCache().remove(miloAdminTokenKey_(str_(req.token)));return {ok:true};}
+ if(action==='adminDashboard')return miloAdminDashboard_(store,req);
+ if(action==='adminReports')return miloAdminReports_(store,req);
+ if(action==='adminDbStatus')return miloAdminDbStatus_(store);
+ if(action==='adminDevices')return miloAdminDevices_(store,req);
+ if(action==='adminDeviceReport')return miloAdminDeviceReport_(store,req);
+ if(action==='adminList')return miloAdminList_(store,req);
+ if(action==='adminSaveProduct')return miloAdminSaveProduct_(store,req);
+ if(action==='adminRemoveProductImage')return miloDeleteRemovedProductPhoto_(store,req);
+ if(action==='adminSaveRecord')return miloAdminSaveRecord_(store,req);
+ if(action==='adminOrderStatus')return miloUpdateCustomerOrder_(store,{orderId:req.orderId,status:req.status});
+ if(action==='adminSettings')return {ok:true,settings:getStoreSettings_(store)};
+ if(action==='adminSaveSettings'){
+  const allowed=['store_name','vat_number','phone','address','footer','invoice_header','restaurant_mode'];
+  if(!req.settings||Object.keys(req.settings).some(k=>!allowed.includes(k)))return fail_('invalid','إعدادات غير مسموح بها');
+  return saveStoreSettings_(store,req.settings);
+ }
+ 
+ return fail_('bad_request','عملية إدارية غير معروفة');
+}
+// Read-only invoices for administration: unlike reports_() this never creates a sheet.
+function miloAdminSales_(store,from,to){
+ const sh=book_().getSheetByName(SHEETS.reports);
+ if(!sh || sh.getLastRow()<2)return [];
+ const t=table_(SHEETS.reports);requireCols_(t,['store_code','invoice_id','date']);
+ const out=[];
+ for(let i=1;i<t.values.length;i++){
+  const r=t.values[i];if(str_(col_(t,r,'store_code'))!==store)continue;
+  const raw=col_(t,r,'date');const date=raw instanceof Date?Utilities.formatDate(raw,Session.getScriptTimeZone(),'yyyy-MM-dd HH:mm:ss'):str_(raw);
+  const day=date.slice(0,10);if((from&&day<from)||(to&&day>to))continue;
+  out.push({invoiceId:str_(col_(t,r,'invoice_id')),date,cashier:str_(col_(t,r,'cashier')),
+   customer:str_(col_(t,r,'customer')),total:num_(col_(t,r,'total')),
+   cash:num_(col_(t,r,'cash')),card:num_(col_(t,r,'card')),
+   vat:num_(col_(t,r,'vat')),discount:num_(col_(t,r,'discount')),
+   change:num_(col_(t,r,'change')),terminal:str_(col_(t,r,'terminal'))});
+ }
+ return out.sort((a,z)=>z.date.localeCompare(a.date));
+}
+function miloAdminDashboard_(store,req){
+ const from=str_(req.from),to=str_(req.to);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to||Date.parse(to)-Date.parse(from)>366*86400000)return fail_('dates','الفترة يجب أن تكون صحيحة وأقل من سنة');
+ const sales=miloAdminSales_(store,from,to),daily=new Map(),totals={sales:0,cash:0,card:0,vat:0,discount:0,invoices:sales.length};
+ sales.forEach(i=>{totals.sales+=num_(i.total);totals.cash+=Math.max(0,num_(i.cash)-num_(i.change));totals.card+=num_(i.card);totals.vat+=num_(i.vat);totals.discount+=num_(i.discount);const d=str_(i.date).slice(0,10);if(d>=from&&d<=to)daily.set(d,(daily.get(d)||0)+num_(i.total));});
+ const out=Object.fromEntries(Object.entries(totals).map(([k,v])=>[k,Math.round(v*100)/100]));
+ const products=products_(store),orderSheet=book_().getSheetByName(SHEETS.customerOrders);
+ const orders=orderSheet?miloCustomerOrders_(store).orders:[];
+ return {ok:true,totals:out,days:Array.from(daily,([day,total])=>({day,total:Math.round(total*100)/100})).sort((a,b)=>a.day.localeCompare(b.day)),
+  recent:sales.slice(0,40).map(i=>({invoiceId:i.invoiceId,date:i.date,customer:i.customer,total:i.total,cash:i.cash,card:i.card})),
+  productCount:products.length,lowStock:products.filter(p=>!p.unlimitedStock&&p.stock<=p.minStock).length,pendingOrders:orders.filter(o=>!['ملغي','مكتمل'].includes(o.status)).length};
+}
+function miloAdminList_(store,req){
+ const type=str_(req.type);
+ if(type==='products')return {ok:true,items:products_(store)};
+ if(type==='orders')return book_().getSheetByName(SHEETS.customerOrders)?miloCustomerOrders_(store):{ok:true,orders:[]};
+ if(type==='shifts')return {ok:true,items:readEntities_(SHEETS.shifts,SHIFT_HEADERS,store).slice(-150).reverse()};
+ if(type==='customers'||type==='suppliers')return {ok:true,items:readEntities_(SHEETS[type],CONTACT_HEADERS,store).slice(-300).reverse()};
+ const cfg=MILO_ADMIN_RECORDS[type];if(!cfg)return fail_('bad_request','القسم غير موجود');
+ const sch=EXTRA_SCHEMAS[type];if(!sch)return fail_('bad_request','القسم غير متاح');
+ return {ok:true,items:readEntities_(SHEETS[type],sch.headers,store).slice(-300).reverse()};
+}
+function miloAdminSaveProduct_(store,req){
+ const p=req.product;if(!p||typeof p!=='object'||Array.isArray(p))return fail_('invalid','بيانات المنتج ناقصة');
+ const bc=str_(p.barcode);if(!bc||bc.length>120)return fail_('invalid','باركود المنتج غير صالح');
+ const existing=products_(store).find(x=>x.barcode===bc)||{};
+ const fields=['name','price','wholesalePrice','costPrice','stock','category','unit','minStock','description','imageUrl','unlimitedStock','restaurantOptionsJson'];
+ if(Object.keys(p).some(k=>!['barcode',...fields].includes(k)))return fail_('invalid','حقل منتج غير مسموح به');
+ const merged={...existing,...p,barcode:bc,wholesalePrice:p.wholesalePrice??existing.wholesalePrice??0,costPrice:p.costPrice??existing.costPrice??0,stock:p.stock??existing.stock??0,minStock:p.minStock??existing.minStock??0,category:p.category??existing.category??'',unit:p.unit??existing.unit??'حبة',description:p.description??existing.description??'',imageUrl:p.imageUrl??existing.imageUrl??'',unlimitedStock:p.unlimitedStock===undefined?existing.unlimitedStock===true:p.unlimitedStock===true,restaurantOptionsJson:p.restaurantOptionsJson??existing.restaurantOptionsJson??''};
+ return saveProducts_(store,[merged]);
+}
+function miloAdminSaveRecord_(store,req){
+ const type=str_(req.type),cfg=MILO_ADMIN_RECORDS[type],raw=req.record;
+ if(!cfg||!raw||typeof raw!=='object'||Array.isArray(raw))return fail_('invalid','سجل غير صالح');
+ if(Object.keys(raw).some(k=>![cfg.id,...cfg.fields].includes(k)))return fail_('invalid','حقول غير مسموح بها');
+ const id=str_(raw[cfg.id])||Utilities.getUuid();if(id.length>120)return fail_('invalid','معرف طويل جدًا');
+ const item={[cfg.id]:id};for(const f of cfg.fields)if(raw[f]!==undefined)item[f]=raw[f];
+ if(type==='customers'||type==='suppliers'){
+  if(!str_(item.name))return fail_('invalid','الاسم مطلوب');
+  // Preserve other columns on existing contacts, including balances/tax IDs.
+  const old=readEntities_(SHEETS[type],CONTACT_HEADERS,store).find(r=>str_(r.contact_id)===id)||{};
+  return saveEntities_(SHEETS[type],CONTACT_HEADERS,store,[{...old,...item}],cfg.id,[cfg.id]);
+ }
+ const sch=EXTRA_SCHEMAS[type];const old=readEntities_(SHEETS[type],sch.headers,store).find(r=>str_(r.record_id)===id)||{};
+ return saveExtraRecords_(SHEETS[type],sch,store,[{...old,...item}]);
+}
+function miloAdminChangePassword_(auth,req){
+ return fail_('shared_login','بيانات الإدارة مرتبطة بحساب الكاشير في Accounts. غيّر كلمة المرور عبر إدارة الحسابات المعتمدة.');
+}
+
+
+// Administrative read-only reports from the existing cashier Reports sheet.
+function miloAdminReports_(store,req){
+ const from=str_(req.from),to=str_(req.to);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to||Date.parse(to)-Date.parse(from)>366*86400000)
+  return fail_('dates','الفترة يجب أن تكون صحيحة وأقل من سنة');
+ const sales=miloAdminSales_(store,from,to);
+ const totals={sales:0,cash:0,card:0,vat:0,discount:0,invoices:sales.length};
+ sales.forEach(x=>{totals.sales+=num_(x.total);totals.cash+=Math.max(0,num_(x.cash)-num_(x.change));totals.card+=num_(x.card);totals.vat+=num_(x.vat);totals.discount+=num_(x.discount);});
+ for(const k of ['sales','cash','card','vat','discount'])totals[k]=Math.round(totals[k]*100)/100;
+ return {ok:true,totals,invoices:sales.slice(0,300).map(x=>({invoiceId:x.invoiceId,date:x.date,cashier:x.cashier,customer:x.customer,total:x.total,cash:x.cash,card:x.card})),truncated:sales.length>300};
+}
+
+// Check real store-scoped data from the very same bound spreadsheet as the cashier.
+function miloAdminDbStatus_(store){
+ const labels={Accounts:'accounts',Products:'products',Reports:'reports',Shifts:'shifts',StoreSettings:'storeSettings',CustomerOrders:'customerOrders',Customers:'customers',Suppliers:'suppliers',Expenses:'expenses',Employees:'employees',Purchases:'purchases'};
+ const ss=book_(),tables={};
+ for(const [label,property] of Object.entries(labels)){
+  const sheet=ss.getSheetByName(SHEETS[property]);if(!sheet){tables[label]={exists:false,count:0};continue;}
+  const nrows=sheet.getLastRow(),ncols=sheet.getLastColumn();let count=0;
+  if(nrows>1&&ncols>0){const heads=sheet.getRange(1,1,1,ncols).getValues()[0].map(str_),idx=heads.indexOf('store_code');
+   if(idx>=0){const values=sheet.getRange(2,idx+1,nrows-1,1).getValues();count=values.reduce((n,r)=>n+(str_(r[0])===store?1:0),0);}
+  }
+  tables[label]={exists:true,count};
+ }
+ const a=table_(SHEETS.accounts),row=a.values.slice(1).find(r=>str_(col_(a,r,'store_code'))===store);
+ return {ok:true,storeCode:store,storeName:row?str_(col_(a,row,'store_name')):'',checkedAt:new Date().toISOString(),tables};
+}
+
+
+// Devices: ADMIN READ ONLY. All records are filtered by the authenticated store.
+// Device status is a last-seen observation, not a remote connection or control channel.
+function miloAdminDeviceTable_(name){
+ const sh=book_().getSheetByName(name);
+ if(!sh||sh.getLastRow()<2)return null;
+ return table_(name);
+}
+function miloAdminDeviceRows_(name,store){
+ const t=miloAdminDeviceTable_(name);
+ if(!t||t.idx.store_code===undefined)return [];
+ return t.values.slice(1).filter(r=>str_(col_(t,r,'store_code'))===store).map(r=>{
+  const item={};for(const h of t.headers)item[h]=col_(t,r,h);
+  return item;
+ });
+}
+function miloAdminDeviceDate_(x){
+ if(x instanceof Date)return x.toISOString();
+ const s=str_(x);if(!s)return '';
+ const ms=Date.parse(s);return isFinite(ms)?new Date(ms).toISOString():s;
+}
+function miloAdminDeviceTime_(x){const v=Date.parse(miloAdminDeviceDate_(x));return isFinite(v)?v:0;}
+function miloAdminDevicePeriod_(req){
+ const from=str_(req.from),to=str_(req.to);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to||Date.parse(to)-Date.parse(from)>366*86400000)return null;
+ return {from,to};
+}
+function miloAdminDeviceCatalog_(store){
+ const map={};
+ function add(id,name='',source='',lastSeen=''){
+  id=str_(id);if(!id||id.length>120)return;
+  if(!map[id])map[id]={deviceCode:id,deviceName:'',sourceTypes:[],lastSeen:'',lastOpen:'',lastClose:'',username:'',ownerName:'',reportedStatus:''};
+  const item=map[id];
+  if(str_(name)&&(!item.deviceName||source==='status'))item.deviceName=str_(name).slice(0,80);
+  if(source&&!item.sourceTypes.includes(source))item.sourceTypes.push(source);
+  if(miloAdminDeviceTime_(lastSeen)>miloAdminDeviceTime_(item.lastSeen))item.lastSeen=miloAdminDeviceDate_(lastSeen);
+  return item;
+ }
+ for(const r of miloAdminDeviceRows_(SHEETS.deviceStatus,store)){
+  const o=add(r.device_code,r.device_name,'status',r.last_seen);
+  if(!o)continue;
+  o.lastOpen=miloAdminDeviceDate_(r.last_open);
+  o.lastClose=miloAdminDeviceDate_(r.last_close);
+  o.username=str_(r.username);o.ownerName=str_(r.owner_name);
+  o.reportedStatus=str_(r.current_status);
+ }
+ for(const r of miloAdminDeviceRows_(SHEETS.deviceActivity,store))add(r.device_code,r.device_name,'activity',r.received_at||r.occurred_at);
+ for(const r of miloAdminDeviceRows_(SHEETS.reports,store))add(r.terminal,r.terminal_name,'sales',r.date);
+ for(const r of miloAdminDeviceRows_(SHEETS.shifts,store))add(r.terminal,'','shift',r.updated_at||r.closed_at||r.opened_at);
+ for(const r of miloAdminDeviceRows_(SHEETS.reportDaily,store))add(r.device_code||r.terminal_id,r.terminal_name,'daily',r.updated_at);
+ return Object.values(map).map(d=>{
+  const elapsed=Date.now()-miloAdminDeviceTime_(d.lastSeen);
+  // Treat stale event timestamps conservatively, never assert live connection.
+  d.connectionLabel=!d.lastSeen?'لا توجد بيانات اتصال':elapsed<0?'الوقت غير مؤكد':elapsed<=5*60000&&d.reportedStatus==='متصل'&&d.sourceTypes.includes('status')?'شوهد مؤخرًا':'آخر نشاط مسجل';
+  return d;
+ }).sort((a,b)=>miloAdminDeviceTime_(b.lastSeen)-miloAdminDeviceTime_(a.lastSeen));
+}
+function miloAdminDevices_(store,req){
+ const list=miloAdminDeviceCatalog_(store);
+ return {ok:true,devices:list,count:list.length,checkedAt:new Date().toISOString(),note:'لا توجد خدمة تحكم مباشر؛ حالة الاتصال تقديرية حسب آخر بيانات سجّلها الكاشير.'};
+}
+function miloAdminDeviceReport_(store,req){
+ const id=str_(req.deviceCode),period=miloAdminDevicePeriod_(req);
+ if(!period)return fail_('dates','اختر فترة صالحة لا تتجاوز سنة واحدة');
+ if(!id||id.length>120)return fail_('invalid_device','معرّف جهاز غير صالح');
+ const device=miloAdminDeviceCatalog_(store).find(x=>x.deviceCode===id);
+ if(!device)return fail_('not_found','هذا الجهاز غير موجود ضمن أجهزة حسابك');
+ const {from,to}=period;
+ const within=v=>{const s=miloAdminDeviceDate_(v);const day=s.slice(0,10);return day>=from&&day<=to;};
+ const invoices=miloAdminDeviceRows_(SHEETS.reports,store).filter(r=>str_(r.terminal)===id&&within(r.date));
+ const shifts=miloAdminDeviceRows_(SHEETS.shifts,store).filter(r=>str_(r.terminal)===id&&(within(r.opened_at)||within(r.closed_at)||within(r.updated_at)));
+ const events=miloAdminDeviceRows_(SHEETS.deviceActivity,store).filter(r=>str_(r.device_code)===id&&within(r.received_at||r.occurred_at));
+ const alerts=miloAdminDeviceRows_(SHEETS.deviceAlerts,store).filter(r=>str_(r.device_code)===id&&within(r.alert_at));
+ const tickets=miloAdminDeviceRows_(SHEETS.supportTickets,store).filter(r=>str_(r.device_code)===id&&within(r.received_at||r.occurred_at));
+ const daily=miloAdminDeviceRows_(SHEETS.reportDaily,store).filter(r=>(str_(r.device_code)===id||str_(r.terminal_id)===id)&&str_(r.report_date)>=from&&str_(r.report_date)<=to);
+ const totals={invoices:invoices.length,sales:0,cash:0,card:0,vat:0,discount:0,refunds:0,avgInvoice:0};
+ const byDay={},byCashier={},top=[];
+ for(const r of invoices){
+  const total=num_(r.total),cash=Math.max(0,num_(r.cash)-num_(r.change)),card=num_(r.card);
+  totals.sales+=total;totals.cash+=cash;totals.card+=card;totals.vat+=num_(r.vat);totals.discount+=num_(r.discount);
+  const day=miloAdminDeviceDate_(r.date).slice(0,10),name=str_(r.cashier)||'غير محدد';
+  if(!byDay[day])byDay[day]={day,invoices:0,sales:0,cash:0,card:0};
+  byDay[day].invoices++;byDay[day].sales+=total;byDay[day].cash+=cash;byDay[day].card+=card;
+  if(!byCashier[name])byCashier[name]={cashier:name,invoices:0,sales:0};
+  byCashier[name].invoices++;byCashier[name].sales+=total;
+ }
+ for(const key of ['sales','cash','card','vat','discount'])totals[key]=Math.round(totals[key]*100)/100;
+ totals.avgInvoice=totals.invoices?Math.round(totals.sales/totals.invoices*100)/100:0;
+ const round=x=>Math.round(x*100)/100;
+ return {ok:true,device,period,totals,
+  daily:Object.values(byDay).sort((a,b)=>a.day.localeCompare(b.day)).map(x=>({...x,sales:round(x.sales),cash:round(x.cash),card:round(x.card)})),
+  cashiers:Object.values(byCashier).sort((a,b)=>b.sales-a.sales).map(x=>({...x,sales:round(x.sales)})),
+  shifts:shifts.sort((a,b)=>miloAdminDeviceTime_(b.opened_at)-miloAdminDeviceTime_(a.opened_at)).slice(0,100).map(r=>({shiftId:str_(r.shift_id),cashier:str_(r.cashier),openedAt:miloAdminDeviceDate_(r.opened_at),closedAt:miloAdminDeviceDate_(r.closed_at),openingCash:num_(r.opening_cash),closingCash:num_(r.closing_cash),expectedCash:num_(r.expected_cash),totalSales:num_(r.total_sales),invoiceCount:num_(r.invoice_count)})),
+  recentInvoices:invoices.sort((a,b)=>miloAdminDeviceTime_(b.date)-miloAdminDeviceTime_(a.date)).slice(0,100).map(r=>({invoiceId:str_(r.invoice_id),date:miloAdminDeviceDate_(r.date),cashier:str_(r.cashier),customer:str_(r.customer),total:num_(r.total),cash:num_(r.cash),card:num_(r.card),vat:num_(r.vat),discount:num_(r.discount)})),
+  events:events.sort((a,b)=>miloAdminDeviceTime_(b.received_at)-miloAdminDeviceTime_(a.received_at)).slice(0,60).map(r=>({at:miloAdminDeviceDate_(r.received_at||r.occurred_at),type:str_(r.event_type),details:str_(r.details)})),
+  alerts:alerts.sort((a,b)=>miloAdminDeviceTime_(b.alert_at)-miloAdminDeviceTime_(a.alert_at)).slice(0,40).map(r=>({at:miloAdminDeviceDate_(r.alert_at),type:str_(r.alert_type),details:str_(r.details)})),
+  tickets:tickets.sort((a,b)=>miloAdminDeviceTime_(b.received_at)-miloAdminDeviceTime_(a.received_at)).slice(0,40).map(r=>({at:miloAdminDeviceDate_(r.received_at||r.occurred_at),status:str_(r.status),description:str_(r.description).slice(0,160)})),
+  dailyReports:daily.sort((a,b)=>str_(b.report_date).localeCompare(str_(a.report_date))).slice(0,90).map(r=>({day:str_(r.report_date),total:num_(r.sales_total),invoices:num_(r.invoice_count),profit:num_(r.gross_profit)})),
+  records:{invoices:invoices.length,shifts:shifts.length,events:events.length,alerts:alerts.length,tickets:tickets.length,daily:daily.length},
+  note:'الإجماليات من فواتير Reports لنفس الجهاز فقط. تقرير Daily منفصل ولا يضاف للمبيعات لتجنب التكرار. آخر نشاط لا يثبت اتصالًا مباشرًا.'};
+}
+
+
+/** فحص ذاتي اختياري من Apps Script؛ لا ينفذ طلبات فعلية ولا يغير البيانات. */
+function miloAdminSelfTest(){
+ const required=['miloAdminAction_','miloAdminLogin_','miloAdminDevices_','miloAdminDeviceReport_'];
+ const exists={
+  miloAdminAction_:typeof miloAdminAction_==='function',
+  miloAdminLogin_:typeof miloAdminLogin_==='function',
+  miloAdminDevices_:typeof miloAdminDevices_==='function',
+  miloAdminDeviceReport_:typeof miloAdminDeviceReport_==='function'
+ };
+ const missing=required.filter(name=>!exists[name]);
+ const result={ok:missing.length===0,missing,version:'accounts-login-2026-11-14'};
+ Logger.log(JSON.stringify(result));
+ return result;
+}
+
+/** Safe verification: no credentials, products or invoices are modified. */
+function miloAdminRepairSelfTest(){
+ const v=route_({action:'adminVersion'});
+ const out={ok:v.ok===true&&v.service==='MILO_ADMIN'&&typeof miloAdminAction_==='function',service:v.service,version:v.version,adminActionsReady:typeof miloAdminDevices_==='function'&&typeof miloAdminDeviceReport_==='function'};
+ Logger.log(JSON.stringify(out));return out;
+}
+
+/** Run from Apps Script editor — checks Accounts mapping, never logs credentials. */
+function miloAdminAccountsCheck(){
+ const t=table_(SHEETS.accounts);
+ requireCols_(t,['store_code','username','password','status','subscription_end']);
+ const columnsOK=t.headers[1]==='username'&&t.headers[2]==='password';
+ const result={ok:columnsOK,source:'Accounts',usernameColumn:t.idx.username+1,
+  passwordColumn:t.idx.password+1,accountRows:Math.max(0,t.values.length-1),
+  apiVersion:route_({action:'adminVersion'}).version,
+  message:columnsOK?'جاهز لتسجيل الدخول من Accounts':
+   'عناوين username وpassword موجودة لكن ليست في العمودين B و C؛ راجع ترتيب الأعمدة'};
+ Logger.log(JSON.stringify(result));return result;
+}
+
+// === MILO product image cleanup: included in Code.gs ===
+// MILO: safely trash ONLY a photo uploaded for the authenticated store+product.
+// Called after its product record has been saved without the old image URL.
+// Never delete externally linked images, shared photos, or photos belonging to other stores.
+function miloDeleteRemovedProductPhoto_(storeCode,req){
+ const barcode=str_(req.barcode),oldUrl=str_(req.expectedImageUrl);
+ if(!barcode||barcode.length>120||!oldUrl)return fail_('invalid_photo_delete','بيانات إزالة الصورة غير مكتملة');
+ const match=oldUrl.match(/^https:\/\/drive\.google\.com\/thumbnail\?id=([A-Za-z0-9_-]{15,})&sz=w800$/);
+ if(!match)return {ok:true,deleted:false,reason:'external_image'};
+ const folderId='1IVEXo8_hOmjQJt0VtLPoDfsmZc_D8jIE';
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+  const products=products_(storeCode),current=products.find(p=>str_(p.barcode)===barcode);
+  if(!current)return fail_('not_found','تعذر التحقق من المنتج');
+  if(str_(current.imageUrl)===oldUrl)return fail_('photo_still_attached','احفظ إزالة الصورة من المنتج أولاً');
+  // Across ALL product sheets and stores: never delete a referenced photo.
+  for(const t of miloProductTables_())for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'image_url'))===oldUrl)
+   return {ok:true,deleted:false,reason:'still_referenced'};
+  const id=match[1];let folder,file;
+  try{folder=DriveApp.getFolderById(folderId);file=DriveApp.getFileById(id);}catch(e){return fail_('photo_access','تعذر الوصول للصورة أو مجلدها');}
+  const safeStore=storeCode.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,50);
+  const safeBarcode=barcode.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,60);
+  if(!file.getName().startsWith(safeStore+'_'+safeBarcode+'_'))
+   return {ok:true,deleted:false,reason:'not_owned_photo'};
+  let inFolder=false;const parents=file.getParents();while(parents.hasNext())if(parents.next().getId()===folderId)inFolder=true;
+  if(!inFolder)return {ok:true,deleted:false,reason:'outside_folder'};
+  file.setTrashed(true);
+  return {ok:true,deleted:true};
+ }catch(e){return fail_('photo_delete_failed','تعذر حذف صورة المنتج من الأرشيف: '+String(e.message||e));}
+ finally{lock.releaseLock();}
+}
+
+
+// MILO PAY 2026-11: standalone receiver relay, embedded to avoid missing addon deployments.
+/** MILO SUNMI RECEIVER ADDON — no banking execution. Paste as NEW Apps Script file. */
+function miloPayRelayAction_(req){
+ const cmd=String(req.command||'').trim();
+ const token=String(req.deviceToken||'').toUpperCase().trim();
+ if(!/^[A-F0-9]{24}$/.test(token))return {ok:false,error:'invalid_pairing',message:'رمز اقتران غير صالح'};
+ const cache=CacheService.getScriptCache();const key='milo:pay:relay:'+token;
+ if(cmd==='poll'){
+  const raw=cache.get(key);let payment=null;
+  if(raw){try{payment=JSON.parse(raw)}catch(e){}}
+  return {ok:true,payment,service:'MILO Pay Relay',version:'2.2'};
+ }
+ if(cmd==='push'){
+  const auth=authenticate_(req);if(!auth.ok)return auth;
+  const amount=Number(req.amount);
+  if(!Number.isFinite(amount)||amount<=0||amount>1000000||Math.abs(Math.round(amount*100)-amount*100)>0.00001)return {ok:false,error:'amount',message:'مبلغ غير صالح'};
+  const d={requestId:Utilities.getUuid(),invoiceId:String(req.invoiceId||'').slice(0,70),storeName:String(auth.account.storeName||'').slice(0,100),storeCode:auth.account.storeCode,amount,createdAt:new Date().toISOString()};
+  cache.put(key,JSON.stringify(d),300);
+  return {ok:true,requestId:d.requestId,delivery:'queued_unconfirmed'};
+ }
+ return {ok:false,error:'bad_command',message:'أمر غير معروف'};
+}
+
+
+
+// MILO: read-only, hard-to-guess customer invoice links. No login credentials or customer phone in URL.
+function miloInvoiceHtmlEscape_(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function miloInvoiceShareLink_(storeCode,req){
+ const invoiceId=str_(req.invoiceId);if(!invoiceId||invoiceId.length>150)return fail_('bad_request','رقم الفاتورة غير صحيح');
+ const lock=LockService.getScriptLock();lock.waitLock(30000);
+ try{
+  ensureSheet_(book_(),SHEETS.reports,REPORT_HEADERS);
+  const t=table_(SHEETS.reports);requireCols_(t,['store_code','invoice_id','invoice_share_token']);
+  for(let i=1;i<t.values.length;i++){
+   const row=t.values[i];if(str_(col_(t,row,'store_code'))!==storeCode||str_(col_(t,row,'invoice_id'))!==invoiceId)continue;
+   let token=str_(col_(t,row,'invoice_share_token'));
+   if(!/^[a-f0-9]{64}$/i.test(token)){
+    token=(Utilities.getUuid()+Utilities.getUuid()).replace(/-/g,'');
+    t.sh.getRange(i+1,t.idx.invoice_share_token+1).setValue(token);
+   }
+   const base=ScriptApp.getService().getUrl();
+   if(!base)return fail_('not_deployed','انشر تطبيق الويب أولاً لتفعيل رابط الفاتورة');
+   return {ok:true,url:base+'?invoice=1&token='+encodeURIComponent(token),invoiceId};
+  }
+  return fail_('not_found','الفاتورة غير موجودة في قاعدة البيانات');
+ }finally{lock.releaseLock();}
+}
+function miloSharedInvoicePage_(params){
+ const token=str_(params.token);
+ if(!/^[a-f0-9]{64}$/i.test(token))return HtmlService.createHtmlOutput('رابط الفاتورة غير صحيح');
+ const t=table_(SHEETS.reports);requireCols_(t,['invoice_share_token','store_code','invoice_id']);
+ let row;
+ for(let i=1;i<t.values.length;i++)if(str_(col_(t,t.values[i],'invoice_share_token'))===token){row=t.values[i];break;}
+ if(!row)return HtmlService.createHtmlOutput('الفاتورة غير متاحة');
+ const v=k=>miloInvoiceHtmlEscape_(col_(t,row,k));
+ const store=str_(col_(t,row,'store_code'));
+ const prefs=getStoreSettings_(store);
+ const clean=k=>miloInvoiceHtmlEscape_(prefs[k]||'');
+ const accountTable=table_(SHEETS.accounts);
+ let merchant='ميلو',tax='';
+ for(let i=1;i<accountTable.values.length;i++)if(str_(col_(accountTable,accountTable.values[i],'store_code'))===store){merchant=str_(col_(accountTable,accountTable.values[i],'store_name'))||merchant;tax=str_(col_(accountTable,accountTable.values[i],'vat_number'));break;}
+ const money=k=>Number(col_(t,row,k)||0).toFixed(2);
+ const html=`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>فاتورة ميلو</title><style>body{background:#f0f5f4;font:16px Tahoma,Arial;color:#133c37;margin:0;padding:16px}.paper{background:white;border-radius:16px;padding:24px;max-width:570px;margin:25px auto;box-shadow:0 4px 20px #0001}h1{color:#087d70;font-size:26px}p{line-height:1.9;border-bottom:1px solid #e6eeeb;padding:6px 0}strong{float:left}small{color:#567}button{background:#087d70;color:white;border:0;border-radius:10px;padding:13px 20px;cursor:pointer}@media print{body{background:white}.paper{box-shadow:none;margin:0}button{display:none}}</style></head><body><main class="paper"><h1>${miloInvoiceHtmlEscape_(prefs.store_name||merchant)}</h1><small>نسخة إلكترونية للفاتورة المحفوظة في نظام ميلو</small><p>رقم الفاتورة <strong>${v('invoice_id')}</strong></p><p>التاريخ <strong>${v('date')}</strong></p><p>الرقم الضريبي <strong>${clean('vat_number')||miloInvoiceHtmlEscape_(tax)||'—'}</strong></p><p>الأصناف</p><div style="white-space:pre-wrap;line-height:2">${v('items').replace(/ \| /g,'\n')}</div><p>المجموع قبل الخصم <strong>${money('subtotal')} ر.س</strong></p><p>الخصم <strong>${money('discount')} ر.س</strong></p><p>ضريبة القيمة المضافة <strong>${money('vat')} ر.س</strong></p><p><b>الإجمالي</b> <strong>${money('total')} ر.س</strong></p><p>${clean('address')}</p><button onclick="window.print()">طباعة / حفظ PDF</button><p><small>هذه نسخة عرض وليست بحد ذاتها إقرار ربط مع فاتورة هيئة الزكاة والضريبة والجمارك.</small></p></main></body></html>`;
+ return HtmlService.createHtmlOutput(html).setTitle('فاتورة ميلو');
 }
