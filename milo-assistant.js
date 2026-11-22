@@ -2,14 +2,15 @@
 (()=>{'use strict';
  const $=id=>document.getElementById(id);
  const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const ui=document.createElement('div');ui.id='miloAssistantRoot';ui.innerHTML=`<button id="miloAssistantFab" type="button" aria-label="فتح مساعد ميلو" aria-controls="miloAssistantPanel" aria-expanded="false"><img src="icons/milo-assistant.png" alt=""></button><section id="miloAssistantPanel" class="milo-assistant-panel" role="dialog" aria-modal="false" aria-labelledby="miloAssistantTitle" hidden dir="rtl"><header class="milo-assistant-head"><div><strong id="miloAssistantTitle">مساعد ميلو</strong><small>مساعد الكاشير</small></div><button id="miloAssistantClose" type="button" aria-label="إغلاق">×</button></header><div class="milo-assistant-messages" id="miloAssistantMessages" aria-live="polite"></div><div class="milo-assistant-quick" id="miloAssistantQuick"><button type="button" data-ask="مبيعات اليوم">مبيعات اليوم</button><button type="button" data-ask="المنتجات الناقصة">المنتجات الناقصة</button><button type="button" data-ask="كيف أستخدم شاشة المطبخ؟">شاشة المطبخ</button><button type="button" data-ask="كيف أرسل فاتورة للجوال؟">الفاتورة للجوال</button></div><form id="miloAssistantForm" class="milo-assistant-form"><input id="miloAssistantInput" type="text" maxlength="350" autocomplete="off" placeholder="اسأل عن الكاشير أو التقارير..." aria-label="اكتب سؤالك" required><button type="submit">إرسال</button></form><div class="milo-assistant-note">مساعد إرشادي محلي؛ لا يتصل بنموذج ذكاء اصطناعي أو يرسل بياناتك خارجيًا.</div></section>`;
+ const ui=document.createElement('div');ui.id='miloAssistantRoot';ui.innerHTML=`<button id="miloAssistantFab" type="button" aria-label="فتح مساعد ميلو" aria-controls="miloAssistantPanel" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5 8.1 8.1 0 0 1-3.6-.85L4 20l1.85-4.9A8.1 8.1 0 0 1 5 11.5a7.5 7.5 0 0 1 15 0Z"/><path d="M9 11.5h.01M12.5 11.5h.01M16 11.5h.01"/></svg></button><section id="miloAssistantPanel" class="milo-assistant-panel" role="dialog" aria-modal="false" aria-labelledby="miloAssistantTitle" hidden dir="rtl"><header class="milo-assistant-head"><div><strong id="miloAssistantTitle">مساعد ميلو</strong><small>مساعد الكاشير</small></div><button id="miloAssistantClose" type="button" aria-label="إغلاق">×</button></header><div class="milo-assistant-messages" id="miloAssistantMessages" aria-live="polite"></div><div class="milo-assistant-quick" id="miloAssistantQuick"><button type="button" id="miloAssistantSupportTab">محادثة الدعم</button><button type="button" data-ask="مبيعات اليوم">مبيعات اليوم</button><button type="button" data-ask="المنتجات الناقصة">المنتجات الناقصة</button><button type="button" data-ask="كيف أستخدم شاشة المطبخ؟">شاشة المطبخ</button><button type="button" data-ask="كيف أرسل فاتورة للجوال؟">الفاتورة للجوال</button></div><form id="miloAssistantForm" class="milo-assistant-form"><input id="miloAssistantInput" type="text" maxlength="350" autocomplete="off" placeholder="اسأل عن الكاشير أو التقارير..." aria-label="اكتب سؤالك" required><button type="submit">إرسال</button></form></section>`;
  document.body.appendChild(ui);
  const panel=$('miloAssistantPanel'), fab=$('miloAssistantFab'), messages=$('miloAssistantMessages');
+ let supportMode=false,supportBusy=false,supportTimer=null;
  const welcome='مرحبًا! أقدر أساعدك في شرح استخدام ميلو وعرض ملخصات من البيانات المحمّلة حاليًا في الكاشير. اختر سؤالًا أو اكتبه.';
  function add(role,txt){const e=document.createElement('div');e.className='milo-assistant-bubble '+role;e.textContent=txt;messages.append(e);messages.scrollTop=messages.scrollHeight;}
  add('assistant',welcome);
  function loggedIn(){return !!(document.getElementById('app') && !document.getElementById('app').classList.contains('hidden') && typeof state!=='undefined' && state.account);}
- function toggle(open){if(open&&!loggedIn())return;panel.hidden=!open;fab.setAttribute('aria-expanded',String(open));if(open)$('miloAssistantInput').focus();}
+ function toggle(open){if(open&&!loggedIn())return;panel.hidden=!open;fab.setAttribute('aria-expanded',String(open));if(open){$('miloAssistantInput').focus();if(supportMode)refreshSupport();}else stopSupport();}
  fab.addEventListener('click',()=>toggle(panel.hidden));$('miloAssistantClose').addEventListener('click',()=>toggle(false));
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden)toggle(false);});
  function money(v){return (Number(v)||0).toLocaleString('ar-SA',{maximumFractionDigits:2})+' ر.س';}
@@ -35,8 +36,39 @@
   return 'أقدر أساعدك في مبيعات اليوم، المنتجات الناقصة، شاشة المطبخ، الفاتورة للجوال، هنقرستيشن والورديات. أما الأسئلة المفتوحة فتحتاج تفعيل خدمة ذكاء اصطناعي آمنة لاحقًا.';
  }
  function ask(q){const x=String(q||'').trim();if(!x)return;add('user',x);add('assistant',response(x));}
- $('miloAssistantForm').addEventListener('submit',e=>{e.preventDefault();const input=$('miloAssistantInput');ask(input.value);input.value='';input.focus();});
- $('miloAssistantQuick').addEventListener('click',e=>{const b=e.target.closest('[data-ask]');if(b)ask(b.dataset.ask);});
+ function stopSupport(){if(supportTimer){clearInterval(supportTimer);supportTimer=null;}}
+ function supportView(enable){
+  supportMode=!!enable;stopSupport();
+  $('miloAssistantSupportTab').textContent=supportMode?'العودة للمساعد':'محادثة الدعم';
+  $('miloAssistantInput').placeholder=supportMode?'اكتب رسالتك للدعم...':'اسأل عن الكاشير أو التقارير...';
+  $('miloAssistantInput').maxLength=supportMode?1200:350;
+  messages.replaceChildren();
+  if(supportMode){add('assistant','أهلًا بك في دعم ميلو. اكتب رسالتك هنا وسنرد عليك في نفس المحادثة.');refreshSupport();supportTimer=setInterval(()=>{if(!panel.hidden&&loggedIn())refreshSupport()},15000);}
+  else add('assistant',welcome);
+ }
+ async function refreshSupport(){
+  if(!supportMode||!loggedIn()||supportBusy)return;
+  supportBusy=true;
+  try{
+   const result=await api('getSupportConversation');
+   if(!supportMode)return;
+   const items=Array.isArray(result.messages)?result.messages:[];
+   messages.replaceChildren();
+   if(!items.length)add('assistant','أهلًا بك في دعم ميلو. اكتب رسالتك هنا وسنرد عليك في نفس المحادثة.');
+   items.forEach(t=>{add('user',t.description);if(t.adminReply)add('assistant',t.adminReply)});
+  }catch(e){if(!messages.children.length)add('assistant','تعذر تحديث المحادثة. حاول مرة أخرى.');}
+  finally{supportBusy=false}
+ }
+ async function sendSupport(q){
+  if(supportBusy)throw Error('جارٍ تحديث المحادثة، أعد المحاولة.');
+  const id=uid();
+  await api('submitSupportTicket',{ticket:{ticketId:id,storeCode:state.account.storeCode,deviceCode:terminalId(),deviceName:state.terminalName,occurredAt:dateTime(),description:q,errorSummary:''}});
+  add('user',q);await refreshSupport();
+ }
+ $('miloAssistantSupportTab').addEventListener('click',()=>supportView(!supportMode));
+ window.MiloAssistantSupport={open(){supportView(true);toggle(true)}};
+ $('miloAssistantForm').addEventListener('submit',async e=>{e.preventDefault();const input=$('miloAssistantInput');const q=input.value.trim();if(!q)return;if(supportMode){input.disabled=true;try{await sendSupport(q);input.value='';}catch(err){add('assistant','تعذر إرسال الرسالة، حاول مرة أخرى.');}finally{input.disabled=false;input.focus();}}else{ask(q);input.value='';input.focus();}});
+ $('miloAssistantQuick').addEventListener('click',e=>{const b=e.target.closest('[data-ask]');if(b){if(supportMode)supportView(false);ask(b.dataset.ask)};});
  const observer=new MutationObserver(()=>{if(!loggedIn()&&!panel.hidden)toggle(false);ui.classList.toggle('milo-assistant-logged-in',loggedIn());});
  observer.observe($('app'),{attributes:true,attributeFilter:['class']});ui.classList.toggle('milo-assistant-logged-in',loggedIn());
 })();

@@ -5,3 +5,9 @@
 #miloAssistantFab img{width:44px;height:44px}
 .milo-assistant-fab-label{display:none!important}
 @media(max-width:600px){#miloAssistantFab{width:54px;height:54px;padding:5px}}
+
+#miloAssistantSupportTab{font-weight:700;background:#d1f2ee;color:#064b4d;border:1px solid #8dd4cf}
+
+/* Icon embedded in markup: no asset URL or image 404. */
+#miloAssistantFab{background:#009e9f;color:#fff;box-shadow:0 8px 22px rgba(0,62,63,.28)}
+#miloAssistantFab svg{display:block;width:28px;height:28px;flex:none}

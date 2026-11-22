@@ -1360,3 +1360,37 @@ body{font-family:'Cairo',Tahoma,Arial,sans-serif!important}
 .milo-device-card-details .milo-device-detail-line strong{font-size:12px;color:#173c2e;font-weight:800;line-height:1.75;text-align:right;min-width:0}
 .milo-device-card-actions{padding-top:4px}
 @media(max-width:520px){.milo-device-grid{grid-template-columns:minmax(0,1fr)}.milo-device-card{padding:17px}.milo-device-card-details .milo-device-detail-line{grid-template-columns:80px minmax(0,1fr)}}
+
+/* MILO 2026-11-22 | Browser receipt only: never print checkout/completion UI.
+   This affects printed output ONLY, not the sale confirmation or payment flow. */
+@media print {
+  html, body { margin:0!important; padding:0!important; background:#fff!important;
+    min-height:0!important; height:auto!important; overflow:visible!important; }
+  body > *:not(#receipt) { display:none!important; visibility:hidden!important; }
+  body::before, body::after { content:none!important; display:none!important; }
+  body > #receipt.print-receipt {
+    display:block!important; visibility:visible!important;
+    position:static!important; float:none!important;
+    margin:0 auto!important; padding:1mm 1.5mm 2mm!important;
+    width:var(--receipt-width,76mm)!important;
+    max-width:100%!important; min-height:0!important; height:auto!important;
+    overflow:visible!important; transform:none!important;
+    box-shadow:none!important; border:0!important;
+    break-before:auto!important; break-after:auto!important;
+    page-break-before:auto!important; page-break-after:auto!important;
+  }
+  body > #receipt.print-receipt .receipt-inner {
+    display:block!important; visibility:visible!important;
+    width:100%!important; height:auto!important; max-height:none!important;
+    overflow:visible!important; background:#fff!important;
+  }
+  body > #receipt.print-receipt .receipt-items,
+  body > #receipt.print-receipt .receipt-summary { width:100%!important; }
+  body > #receipt.print-receipt .receipt-head,
+  body > #receipt.print-receipt .receipt-box,
+  body > #receipt.print-receipt .receipt-footer,
+  body > #receipt.print-receipt .qr-area { break-inside:avoid!important; }
+  body > #receipt.print-receipt button,
+  body > #receipt.print-receipt .modal-actions,
+  body > #receipt.print-receipt .payment-actions { display:none!important; }
+}
